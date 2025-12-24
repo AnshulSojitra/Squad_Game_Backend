@@ -1,15 +1,3 @@
-// const express = require("express");
-// const router = express.Router();
-// const gameController = require("../controllers/gameController");
-
-// // Admin only
-// router.post("/", gameController.createGame);
-// router.get("/", gameController.getGames);
-// router.put("/:id", gameController.updateGame);
-// router.delete("/:id", gameController.deleteGame);
-
-// module.exports = router;
-
 const express = require("express");
 const router = express.Router();
 
