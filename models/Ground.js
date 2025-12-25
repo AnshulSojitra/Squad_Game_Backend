@@ -1,51 +1,75 @@
-const mongoose = require("mongoose");
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/db");
 
-const groundSchema = new mongoose.Schema(
+const Ground = sequelize.define(
+  "Ground",
   {
-    name: {
-      type: String,
-      required: true,
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
     },
 
-    address: {
-      type: String,
-      required: true,
+    /* BASIC INFO */
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
 
     contactNo: {
-      type: String,
-      required: true,
+      type: DataTypes.STRING,
+      allowNull: false,
     },
 
-    timing: {
-      startTime: { type: String, required: true },
-      endTime: { type: String, required: true },
+    pricePerSlot: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
     },
 
-    pricePerHour: {
-      type: Number,
-      required: true,
+    /* LOCATION */
+    area: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
 
-    games: [
-      {
-        type: String,
-        enum: ["Cricket", "Badminton", "Football", "Basketball"],
-        required: true,
-      },
-    ],
-
-    image: {
-      type: String, // Cloudinary URL
-      required: true,
+    country: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
 
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin",
+    state: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+
+    city: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+
+    /* GAME */
+    game: {
+      type: DataTypes.STRING,
+      allowNull: false, // cricket, football, etc.
+    },
+
+    /* OPERATING HOURS */
+    openingTime: {
+      type: DataTypes.STRING, // "06:00"
+      allowNull: false,
+    },
+
+    closingTime: {
+      type: DataTypes.STRING, // "23:00"
+      allowNull: false,
+    },
+
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
     },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Ground", groundSchema);
+module.exports = Ground;

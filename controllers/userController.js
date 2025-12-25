@@ -1,19 +1,16 @@
-const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { User } = require("../models");
 
-// REGISTER USER
 exports.registerUser = async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
 
-    // check existing user
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    const existing = await User.findOne({ where: { email } });
+    if (existing) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
@@ -26,7 +23,7 @@ exports.registerUser = async (req, res) => {
     res.status(201).json({
       message: "User registered successfully",
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
       },
@@ -36,12 +33,11 @@ exports.registerUser = async (req, res) => {
   }
 };
 
-// LOGIN USER
 exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
@@ -52,7 +48,7 @@ exports.loginUser = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user._id, role: "user" },
+      { id: user.id, role: "user" },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -60,7 +56,7 @@ exports.loginUser = async (req, res) => {
     res.json({
       token,
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
       },

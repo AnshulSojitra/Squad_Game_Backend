@@ -1,38 +1,33 @@
-const Admin = require("../models/Admin");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { Admin } = require("../models");
 
-// ADMIN LOGIN
 exports.loginAdmin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // check admin exists
-    const admin = await Admin.findOne({ email });
+    const admin = await Admin.findOne({ where: { email } });
     if (!admin) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // check password
     const isMatch = await bcrypt.compare(password, admin.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // generate token
     const token = jwt.sign(
-      { id: admin._id, role: admin.role },
+      { id: admin.id, role: "admin" },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "7d" }
     );
 
     res.json({
       token,
       admin: {
-        id: admin._id,
+        id: admin.id,
         name: admin.name,
         email: admin.email,
-        role: admin.role,
       },
     });
   } catch (error) {

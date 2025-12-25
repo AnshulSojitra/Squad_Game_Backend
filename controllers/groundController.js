@@ -1,41 +1,13 @@
-const Ground = require("../models/Ground");
+const { Ground } = require("../models");
+
+//  ADMIN CONTROLLERS
 
 /**
- * CREATE GROUND (ADMIN)
- * POST /api/grounds
+ * CREATE GROUND
+ * POST /api/admin/grounds
  */
-// exports.createGround = async (req, res) => {
-//   try {
-//     const { name, address, contactNo, timing, pricePerHour, games } = req.body;
-
-//     // if (!req.file) {
-//     //   return res.status(400).json({ message: "Image is required" });
-//     // }
-
-//     const ground = await Ground.create({
-//       name,
-//       address,
-//       contactNo,
-//       timing,
-//       pricePerHour,
-//       games: Array.isArray(games) ? games : [games],
-//       image: req.file.path, // Cloudinary URL
-//       createdBy: req.admin.id,
-//     });
-
-//     res.status(201).json({
-//       message: "Ground created successfully",
-//       ground,
-//     });
-//   } catch (error) {
-//     res.status(500).json({ message: error.message });
-//   }
-// };
 exports.createGround = async (req, res) => {
   try {
-    console.log("BODY:", req.body);
-    console.log("FILE:", req.file);
-
     const {
       name,
       address,
@@ -54,14 +26,12 @@ exports.createGround = async (req, res) => {
       name,
       address,
       contactNo,
-      timing: {
-        startTime,
-        endTime,
-      },
+      startTime,
+      endTime,
       pricePerHour,
-      games: Array.isArray(games) ? games : [games],
+      games: JSON.stringify(Array.isArray(games) ? games : [games]),
       image: req.file.path,
-      createdBy: req.admin.id,
+      adminId: req.admin.id, // admin = ground owner
     });
 
     res.status(201).json({
@@ -69,29 +39,127 @@ exports.createGround = async (req, res) => {
       ground,
     });
   } catch (error) {
-    console.error("SAVE ERROR:", error);
+    console.error("CREATE GROUND ERROR:", error);
     res.status(500).json({
-      message: error.message || "Failed to save ground",
+      message: error.message || "Failed to create ground",
     });
   }
 };
+
+/**
+ * GET ALL GROUNDS (ADMIN - ONLY THEIR GROUNDS)
+ * GET /api/admin/grounds
+ */
+exports.getAdminGrounds = async (req, res) => {
+  try {
+    const grounds = await Ground.findAll({
+      where: { adminId: req.admin.id },
+      order: [["createdAt", "DESC"]],
+    });
+
+    const formatted = grounds.map((g) => ({
+      ...g.toJSON(),
+      games: JSON.parse(g.games),
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error("GET ADMIN GROUNDS ERROR:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * UPDATE GROUND (ADMIN - OWN GROUND ONLY)
+ * PUT /api/admin/grounds/:id
+ */
+exports.updateGround = async (req, res) => {
+  try {
+    const updates = req.body;
+
+    if (updates.games) {
+      updates.games = JSON.stringify(
+        Array.isArray(updates.games) ? updates.games : [updates.games]
+      );
+    }
+
+    if (req.file) {
+      updates.image = req.file.path;
+    }
+
+    const ground = await Ground.findOne({
+      where: {
+        id: req.params.id,
+        adminId: req.admin.id,
+      },
+    });
+
+    if (!ground) {
+      return res
+        .status(404)
+        .json({ message: "Ground not found or access denied" });
+    }
+
+    await ground.update(updates);
+
+    res.json({
+      message: "Ground updated successfully",
+      ground,
+    });
+  } catch (error) {
+    console.error("UPDATE GROUND ERROR:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * DELETE GROUND (ADMIN - OWN GROUND ONLY)
+ * DELETE /api/admin/grounds/:id
+ */
+exports.deleteGround = async (req, res) => {
+  try {
+    const ground = await Ground.findOne({
+      where: {
+        id: req.params.id,
+        adminId: req.admin.id,
+      },
+    });
+
+    if (!ground) {
+      return res
+        .status(404)
+        .json({ message: "Ground not found or access denied" });
+    }
+
+    await ground.destroy();
+
+    res.json({ message: "Ground deleted successfully" });
+  } catch (error) {
+    console.error("DELETE GROUND ERROR:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+//  PUBLIC CONTROLLERS (USERS)
+
 /**
  * GET ALL GROUNDS (PUBLIC)
  * GET /api/grounds
- * Optional filter: ?game=cricket
  */
 exports.getGrounds = async (req, res) => {
   try {
-    const { game } = req.query;
+    const grounds = await Ground.findAll({
+      order: [["createdAt", "DESC"]],
+    });
 
-    const filter = {};
-    if (game) {
-      filter.games = game;
-    }
+    const formatted = grounds.map((g) => ({
+      ...g.toJSON(),
+      games: JSON.parse(g.games),
+    }));
 
-    const grounds = await Ground.find(filter).sort({ createdAt: -1 });
-    res.json(grounds);
+    res.json(formatted);
   } catch (error) {
+    console.error("GET GROUNDS ERROR:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -102,67 +170,18 @@ exports.getGrounds = async (req, res) => {
  */
 exports.getGroundById = async (req, res) => {
   try {
-    const ground = await Ground.findById(req.params.id);
-
-    if (!ground) {
-      return res.status(404).json({ message: "Ground not found" });
-    }
-
-    res.json(ground);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-/**
- * UPDATE GROUND (ADMIN)
- * PUT /api/grounds/:id
- */
-exports.updateGround = async (req, res) => {
-  try {
-    const updates = req.body;
-
-    // If new image uploaded, replace old one
-    if (req.file) {
-      updates.image = req.file.path;
-    }
-
-    // Handle games field properly
-    if (updates.games && !Array.isArray(updates.games)) {
-      updates.games = [updates.games];
-    }
-
-    const ground = await Ground.findByIdAndUpdate(req.params.id, updates, {
-      new: true,
-    });
+    const ground = await Ground.findByPk(req.params.id);
 
     if (!ground) {
       return res.status(404).json({ message: "Ground not found" });
     }
 
     res.json({
-      message: "Ground updated successfully",
-      ground,
+      ...ground.toJSON(),
+      games: JSON.parse(ground.games),
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-/**
- * DELETE GROUND (ADMIN)
- * DELETE /api/grounds/:id
- */
-exports.deleteGround = async (req, res) => {
-  try {
-    const ground = await Ground.findByIdAndDelete(req.params.id);
-
-    if (!ground) {
-      return res.status(404).json({ message: "Ground not found" });
-    }
-
-    res.json({ message: "Ground deleted successfully" });
-  } catch (error) {
+    console.error("GET GROUND BY ID ERROR:", error);
     res.status(500).json({ message: error.message });
   }
 };

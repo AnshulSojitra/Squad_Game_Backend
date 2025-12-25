@@ -8,6 +8,12 @@ const areaRoutes = require("./routes/areaRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const groundRoutes = require("./routes/groundRoutes");
 const adminGroundRoutes = require("./routes/adminGroundRoutes");
+const sequelize = require("./config/db");
+
+sequelize
+  .sync({ alter: true })
+  .then(() => console.log("MySQL connected"))
+  .catch((err) => console.error(err));
 
 const app = express();
 
