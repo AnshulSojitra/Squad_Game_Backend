@@ -7,34 +7,42 @@ const groundSchema = new mongoose.Schema(
       required: true,
     },
 
-    area: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Area",
+    address: {
+      type: String,
       required: true,
     },
 
-    games: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Game",
-      },
-    ],
+    contactNo: {
+      type: String,
+      required: true,
+    },
+
+    timing: {
+      startTime: { type: String, required: true },
+      endTime: { type: String, required: true },
+    },
 
     pricePerHour: {
       type: Number,
       required: true,
     },
 
-    amenities: [String],
+    games: [
+      {
+        type: String,
+        enum: ["Cricket", "Badminton", "Football", "Basketball"],
+        required: true,
+      },
+    ],
 
-    location: {
-      lat: Number,
-      lng: Number,
+    image: {
+      type: String, // Cloudinary URL
+      required: true,
     },
 
-    isActive: {
-      type: Boolean,
-      default: true,
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
     },
   },
   { timestamps: true }
