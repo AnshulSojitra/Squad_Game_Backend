@@ -6,43 +6,43 @@ const { Ground } = require("../models");
  * CREATE GROUND
  * POST /api/admin/grounds
  */
+
 exports.createGround = async (req, res) => {
   try {
-    const {
-      name,
-      address,
-      contactNo,
-      startTime,
-      endTime,
-      pricePerHour,
-      games,
-    } = req.body;
-
-    if (!req.file) {
-      return res.status(400).json({ message: "Image is required" });
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: "Images are required" });
     }
 
+    const imageUrls = req.files.map((file) => `/uploads/${file.filename}`);
+
+    const slotsParsed =
+      typeof req.body.slots === "string"
+        ? JSON.parse(req.body.slots)
+        : req.body.slots;
+
     const ground = await Ground.create({
-      name,
-      address,
-      contactNo,
-      startTime,
-      endTime,
-      pricePerHour,
-      games: JSON.stringify(Array.isArray(games) ? games : [games]),
-      image: req.file.path,
-      adminId: req.admin.id, // admin = ground owner
+      name: req.body.groundName,
+      contactNo: req.body.contact,
+      pricePerSlot: req.body.pricePerHour,
+      area: req.body.area,
+      country: req.body.country,
+      state: req.body.state,
+      city: req.body.city, // optional string
+      cityId: req.body.city, // 🔥 REQUIRED ID
+      game: req.body.game,
+      openingTime: req.body.openingTime,
+      closingTime: req.body.closingTime,
+      adminId: req.admin.id,
+      isActive: true,
     });
 
     res.status(201).json({
-      message: "Ground created successfully",
+      message: "Ground added successfully",
       ground,
     });
   } catch (error) {
     console.error("CREATE GROUND ERROR:", error);
-    res.status(500).json({
-      message: error.message || "Failed to create ground",
-    });
+    res.status(500).json({ message: "Failed to add ground" });
   }
 };
 
@@ -57,15 +57,27 @@ exports.getAdminGrounds = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
+    // ⚠️ Do NOT JSON.parse fields that don't exist
     const formatted = grounds.map((g) => ({
-      ...g.toJSON(),
-      games: JSON.parse(g.games),
+      id: g.id,
+      name: g.name,
+      contactNo: g.contactNo,
+      pricePerSlot: g.pricePerSlot,
+      area: g.area,
+      country: g.country,
+      state: g.state,
+      city: g.city,
+      game: g.game,
+      openingTime: g.openingTime,
+      closingTime: g.closingTime,
+      isActive: g.isActive,
+      createdAt: g.createdAt,
     }));
 
     res.json(formatted);
   } catch (error) {
     console.error("GET ADMIN GROUNDS ERROR:", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Failed to fetch grounds" });
   }
 };
 

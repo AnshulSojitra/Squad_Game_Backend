@@ -9,6 +9,10 @@ const GroundImage = sequelize.define(
       autoIncrement: true,
       primaryKey: true,
     },
+    groundId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
 
     imageUrl: {
       type: DataTypes.STRING,

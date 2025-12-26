@@ -49,12 +49,11 @@ Slot.belongsTo(Ground, {
  * Multiple images per ground
  */
 Ground.hasMany(GroundImage, {
-  foreignKey: {
-    name: "groundId",
-    allowNull: false,
-  },
+  foreignKey: "groundId",
+  as: "images",
   onDelete: "CASCADE",
 });
+
 GroundImage.belongsTo(Ground, {
   foreignKey: "groundId",
 });

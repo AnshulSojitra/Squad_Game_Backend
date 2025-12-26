@@ -6,70 +6,82 @@ const Ground = sequelize.define(
   {
     id: {
       type: DataTypes.INTEGER,
-      autoIncrement: true,
       primaryKey: true,
+      autoIncrement: true,
     },
 
-    /* BASIC INFO */
+    // ground name
     name: {
       type: DataTypes.STRING,
       allowNull: false,
+      field: "name",
     },
 
     contactNo: {
       type: DataTypes.STRING,
       allowNull: false,
+      field: "contactNo",
     },
 
     pricePerSlot: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      field: "pricePerSlot",
     },
 
-    /* LOCATION */
     area: {
       type: DataTypes.STRING,
-      allowNull: false,
+      field: "area",
     },
 
     country: {
       type: DataTypes.STRING,
-      allowNull: false,
+      field: "country",
     },
 
     state: {
       type: DataTypes.STRING,
-      allowNull: false,
+      field: "state",
     },
 
     city: {
       type: DataTypes.STRING,
-      allowNull: false,
+      field: "city",
     },
 
-    /* GAME */
     game: {
       type: DataTypes.STRING,
-      allowNull: false, // cricket, football, etc.
+      allowNull: false,
+      field: "game",
     },
 
-    /* OPERATING HOURS */
     openingTime: {
-      type: DataTypes.STRING, // "06:00"
+      type: DataTypes.STRING,
       allowNull: false,
+      field: "openingTime",
     },
 
     closingTime: {
-      type: DataTypes.STRING, // "23:00"
+      type: DataTypes.STRING,
       allowNull: false,
+      field: "closingTime",
     },
 
     isActive: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
+      field: "isActive",
+    },
+
+    cityId: {
+      type: DataTypes.BIGINT,
+      field: "cityId",
     },
   },
-  { timestamps: true }
+  {
+    tableName: "Grounds",
+    timestamps: true,
+  }
 );
 
 module.exports = Ground;
