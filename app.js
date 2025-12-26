@@ -9,9 +9,10 @@ const adminRoutes = require("./routes/adminRoutes");
 const groundRoutes = require("./routes/groundRoutes");
 const adminGroundRoutes = require("./routes/adminGroundRoutes");
 const sequelize = require("./config/db");
+const locationRoutes = require("./routes/locationRoutes");
 
 sequelize
-  .sync({ alter: true })
+  .sync()
   .then(() => console.log("MySQL connected"))
   .catch((err) => console.error(err));
 
@@ -35,5 +36,6 @@ app.use("/api/areas", areaRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/admin/grounds", adminGroundRoutes);
 app.use("/api/grounds", groundRoutes);
+app.use("/api/location", locationRoutes);
 
 module.exports = app;
