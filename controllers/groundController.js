@@ -1,4 +1,6 @@
 const { Ground, GroundImage, Slot } = require("../models");
+const fs = require("fs");
+const path = require("path");
 
 /* ======================================================
    ADMIN CONTROLLERS
@@ -171,8 +173,21 @@ exports.getAdminGroundById = async (req, res) => {
  * UPDATE GROUND (ADMIN)
  * PUT /api/admin/grounds/:id
  */
+
 // exports.updateGround = async (req, res) => {
 //   try {
+//     const updates = req.body;
+
+//     if (updates.games) {
+//       updates.games = JSON.stringify(
+//         Array.isArray(updates.games) ? updates.games : [updates.games]
+//       );
+//     }
+
+//     if (req.file) {
+//       updates.image = req.file.path;
+//     }
+
 //     const ground = await Ground.findOne({
 //       where: {
 //         id: req.params.id,
@@ -181,84 +196,82 @@ exports.getAdminGroundById = async (req, res) => {
 //     });
 
 //     if (!ground) {
-//       return res.status(404).json({ message: "Ground not found" });
+//       return res
+//         .status(404)
+//         .json({ message: "Ground not found or access denied" });
 //     }
 
-//     await ground.update({
-//       name: req.body.groundName,
-//       contactNo: req.body.contact,
-//       pricePerSlot: req.body.pricePerHour,
-//       area: req.body.area,
-//       country: req.body.country,
-//       state: req.body.state,
-//       city: req.body.city,
-//       game: req.body.game,
-//       openingTime: req.body.openingTime,
-//       closingTime: req.body.closingTime,
+//     await ground.update(updates);
+
+//     res.json({
+//       message: "Ground updated successfully",
+//       ground,
 //     });
-
-//     // Replace slots
-//     if (req.body.slots) {
-//       const slots =
-//         typeof req.body.slots === "string"
-//           ? JSON.parse(req.body.slots)
-//           : req.body.slots;
-
-//       await Slot.destroy({ where: { groundId: ground.id } });
-
-//       const slotRows = slots.map((s) => ({
-//         groundId: ground.id,
-//         startTime: s.start,
-//         endTime: s.end,
-//         isActive: true,
-//       }));
-
-//       await Slot.bulkCreate(slotRows);
-//     }
-
-//     res.json({ message: "Ground updated successfully" });
 //   } catch (error) {
 //     console.error("UPDATE GROUND ERROR:", error);
-//     res.status(500).json({ message: "Failed to update ground" });
+//     res.status(500).json({ message: error.message });
 //   }
 // };
 
 exports.updateGround = async (req, res) => {
   try {
-    const updates = req.body;
-
-    if (updates.games) {
-      updates.games = JSON.stringify(
-        Array.isArray(updates.games) ? updates.games : [updates.games]
-      );
-    }
-
-    if (req.file) {
-      updates.image = req.file.path;
-    }
-
     const ground = await Ground.findOne({
       where: {
         id: req.params.id,
         adminId: req.admin.id,
       },
+      include: { model: GroundImage, as: "images" },
     });
 
     if (!ground) {
-      return res
-        .status(404)
-        .json({ message: "Ground not found or access denied" });
+      return res.status(404).json({ message: "Ground not found" });
     }
 
-    await ground.update(updates);
+    // 1️⃣ Update ground fields
+    await ground.update({
+      name: req.body.groundName,
+      contactNo: req.body.contact,
+      pricePerSlot: req.body.pricePerHour,
+      area: req.body.area,
+      country: req.body.country,
+      state: req.body.state,
+      city: req.body.city,
+      cityId: req.body.city,
+      game: req.body.game,
+      openingTime: req.body.openingTime,
+      closingTime: req.body.closingTime,
+    });
+
+    // 2️⃣ If new images uploaded → replace old ones
+    if (req.files && req.files.length > 0) {
+      // 🔥 Delete old image files (optional but recommended)
+      for (const img of ground.images) {
+        const filePath = path.join(__dirname, "..", img.imageUrl);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+
+      // 🔥 Delete old DB records
+      await GroundImage.destroy({
+        where: { groundId: ground.id },
+      });
+
+      // 🔥 Insert new images
+      const newImages = req.files.map((file) => ({
+        groundId: ground.id,
+        imageUrl: `/uploads/${file.filename}`,
+      }));
+
+      await GroundImage.bulkCreate(newImages);
+    }
 
     res.json({
       message: "Ground updated successfully",
-      ground,
     });
   } catch (error) {
     console.error("UPDATE GROUND ERROR:", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Failed to update ground" });
   }
 };
 
@@ -284,6 +297,55 @@ exports.deleteGround = async (req, res) => {
   } catch (error) {
     console.error("DELETE GROUND ERROR:", error);
     res.status(500).json({ message: "Failed to delete ground" });
+  }
+};
+
+// ADD GROUND IMAGES (ADMIN)
+exports.addGroundImages = async (req, res) => {
+  try {
+    const ground = await Ground.findOne({
+      where: {
+        id: req.params.id,
+        adminId: req.admin.id,
+      },
+    });
+
+    if (!ground) {
+      return res.status(404).json({ message: "Ground not found" });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: "No images uploaded" });
+    }
+
+    const images = req.files.map((file) => ({
+      groundId: ground.id,
+      imageUrl: `/uploads/${file.filename}`,
+    }));
+
+    await GroundImage.bulkCreate(images);
+
+    res.json({ message: "Images added successfully" });
+  } catch (error) {
+    console.error("ADD IMAGE ERROR:", error);
+    res.status(500).json({ message: "Failed to add images" });
+  }
+};
+
+// DELETE GROUND IMAGE (ADMIN)
+exports.deleteGroundImage = async (req, res) => {
+  try {
+    const image = await GroundImage.findByPk(req.params.imageId);
+
+    if (!image) {
+      return res.status(404).json({ message: "Image not found" });
+    }
+
+    await image.destroy();
+    res.json({ message: "Image deleted successfully" });
+  } catch (error) {
+    console.error("DELETE IMAGE ERROR:", error);
+    res.status(500).json({ message: "Failed to delete image" });
   }
 };
 
