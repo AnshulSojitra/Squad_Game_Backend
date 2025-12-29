@@ -1,4 +1,4 @@
-const { Ground } = require("../models");
+const { Ground, GroundImage } = require("../models");
 
 //  ADMIN CONTROLLERS
 
@@ -36,6 +36,16 @@ exports.createGround = async (req, res) => {
       isActive: true,
     });
 
+    // STORE IMAGE PATHS
+    if (req.files && req.files.length > 0) {
+      const images = req.files.map((file) => ({
+        groundId: ground.id,
+        imageUrl: `/uploads/${file.filename}`,
+      }));
+
+      await GroundImage.bulkCreate(images);
+    }
+
     res.status(201).json({
       message: "Ground added successfully",
       ground,
@@ -54,6 +64,12 @@ exports.getAdminGrounds = async (req, res) => {
   try {
     const grounds = await Ground.findAll({
       where: { adminId: req.admin.id },
+      include: {
+        model: GroundImage,
+        as: "images",
+        attributes: ["imageUrl"],
+        required: false,
+      },
       order: [["createdAt", "DESC"]],
     });
 
@@ -72,6 +88,7 @@ exports.getAdminGrounds = async (req, res) => {
       closingTime: g.closingTime,
       isActive: g.isActive,
       createdAt: g.createdAt,
+      images: g.images,
     }));
 
     res.json(formatted);

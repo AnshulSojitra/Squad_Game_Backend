@@ -25,8 +25,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static("uploads"));
 
 // Health check
-app.get("/api/health", (req, res) => {
-  res.json({ status: "Backend running" });
+app.get("/api", (req, res) => {
+  res.json({ status: "🗿🗿Welcome to Box Arena API🗿🗿" });
 });
 
 // API routes
