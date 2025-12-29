@@ -1,7 +1,7 @@
 require("dotenv").config();
 const bcrypt = require("bcryptjs");
 
-const { sequelize, Admin } = require("./models");
+const { sequelize, Admin } = require("../models");
 
 const createAdmin = async () => {
   try {
@@ -12,8 +12,8 @@ const createAdmin = async () => {
     // Admin (Ground Owner) details
     const adminData = {
       name: "Ground Owner",
-      email: "anshul@gmail.com",
-      password: "anshul",
+      email: "niraj@gmail.com",
+      password: "niraj",
       role: "admin", // admin = ground owner
     };
 
