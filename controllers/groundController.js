@@ -1,3 +1,5 @@
+const { Booking } = require("../models");
+const { Op } = require("sequelize");
 const { Ground, GroundImage, Slot } = require("../models");
 const fs = require("fs");
 const path = require("path");
@@ -280,26 +282,6 @@ exports.updateGround = async (req, res) => {
  * DELETE GROUND (ADMIN)
  * DELETE /api/admin/grounds/:id
  */
-// exports.deleteGround = async (req, res) => {
-//   try {
-//     const ground = await Ground.findOne({
-//       where: {
-//         id: req.params.id,
-//         adminId: req.admin.id,
-//       },
-//     });
-
-//     if (!ground) {
-//       return res.status(404).json({ message: "Ground not found" });
-//     }
-
-//     await ground.destroy();
-//     res.json({ message: "Ground deleted successfully" });
-//   } catch (error) {
-//     console.error("DELETE GROUND ERROR:", error);
-//     res.status(500).json({ message: "Failed to delete ground" });
-//   }
-// };
 
 exports.deleteGround = async (req, res) => {
   try {
@@ -320,7 +302,7 @@ exports.deleteGround = async (req, res) => {
         .json({ message: "Ground not found or access denied" });
     }
 
-    // 🔥 DELETE IMAGE FILES FROM UPLOADS
+    // DELETE IMAGE FILES FROM UPLOADS
     if (ground.images && ground.images.length > 0) {
       ground.images.forEach((img) => {
         const filePath = path.join(
@@ -335,7 +317,7 @@ exports.deleteGround = async (req, res) => {
       });
     }
 
-    // 🔥 DELETE DB RECORD (CASCADE WILL DELETE GroundImages)
+    //DELETE DB RECORD (CASCADE WILL DELETE GroundImages)
     await ground.destroy();
 
     res.json({ message: "Ground and images deleted successfully" });
@@ -488,6 +470,8 @@ exports.getPublicGroundById = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch ground" });
   }
 };
+
+// GET SINGLE GROUND BY ID (FOR BOOKING)
 exports.getGroundById = async (req, res) => {
   try {
     const ground = await Ground.findByPk(req.params.id, {
@@ -513,5 +497,57 @@ exports.getGroundById = async (req, res) => {
   } catch (error) {
     console.error("GET GROUND ERROR:", error);
     res.status(500).json({ message: "Failed to fetch ground" });
+  }
+};
+
+/**
+ * GET SLOT AVAILABILITY (PUBLIC)
+ * GET /api/grounds/:groundId/slots?date=YYYY-MM-DD
+ */
+exports.getSlotAvailability = async (req, res) => {
+  try {
+    const { groundId } = req.params;
+    const { date } = req.query;
+
+    if (!date) {
+      return res.status(400).json({ message: "Date is required" });
+    }
+
+    // 1️⃣ Get all slots for this ground
+    const slots = await Slot.findAll({
+      where: { groundId },
+      order: [["startTime", "ASC"]],
+    });
+
+    if (!slots.length) {
+      return res.json([]);
+    }
+
+    const slotIds = slots.map((s) => s.id);
+
+    // 2️⃣ Get bookings for these slots on the given date
+    const bookings = await Booking.findAll({
+      where: {
+        slotId: { [Op.in]: slotIds },
+        date: date,
+        status: { [Op.ne]: "cancelled" },
+      },
+      attributes: ["slotId"],
+    });
+
+    const bookedSlotIds = bookings.map((b) => b.slotId);
+
+    // 3️⃣ Build availability response
+    const availability = slots.map((slot) => ({
+      slotId: slot.id,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      available: !bookedSlotIds.includes(slot.id),
+    }));
+
+    res.json(availability);
+  } catch (error) {
+    console.error("SLOT AVAILABILITY ERROR:", error);
+    res.status(500).json({ message: "Failed to fetch slot availability" });
   }
 };
