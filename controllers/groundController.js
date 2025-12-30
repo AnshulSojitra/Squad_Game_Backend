@@ -458,19 +458,50 @@ exports.getPublicGroundById = async (req, res) => {
 };
 
 // GET SINGLE GROUND BY ID (FOR BOOKING)
+// exports.getGroundById = async (req, res) => {
+//   try {
+//     const ground = await Ground.findByPk(req.params.id, {
+//       include: [
+//         {
+//           model: GroundImage,
+//           as: "images",
+//           attributes: ["imageUrl"],
+//         },
+//         {
+//           model: Slot,
+//           as: "slots",
+//           attributes: ["startTime", "endTime"],
+//         },
+//       ],
+//     });
+
+//     if (!ground) {
+//       return res.status(404).json({ message: "Ground not found" });
+//     }
+
+//     res.json(ground);
+//   } catch (error) {
+//     console.error("GET GROUND ERROR:", error);
+//     res.status(500).json({ message: "Failed to fetch ground" });
+//   }
+// };
+
 exports.getGroundById = async (req, res) => {
   try {
-    const ground = await Ground.findByPk(req.params.id, {
+    const ground = await Ground.findOne({
+      where: {
+        id: req.params.id,
+        adminId: req.admin.id,
+      },
       include: [
         {
           model: GroundImage,
           as: "images",
-          attributes: ["imageUrl"],
+          attributes: ["id", "imageUrl"],
         },
         {
           model: Slot,
-          as: "slots",
-          attributes: ["startTime", "endTime"],
+          as: "Slots",
         },
       ],
     });
@@ -481,8 +512,8 @@ exports.getGroundById = async (req, res) => {
 
     res.json(ground);
   } catch (error) {
-    console.error("GET GROUND ERROR:", error);
-    res.status(500).json({ message: "Failed to fetch ground" });
+    console.error("GET ADMIN GROUND ERROR:", error.message);
+    res.status(500).json({ message: error.message });
   }
 };
 

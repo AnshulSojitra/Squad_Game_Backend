@@ -20,6 +20,7 @@ const adminGroundRoutes = require("./routes/adminGroundRoutes");
 const sequelize = require("./config/db");
 const locationRoutes = require("./routes/locationRoutes");
 const publicGroundRoutes = require("./routes/publicGroundRoutes");
+const bookingRoutes = require("./routes/bookingRoutes");
 
 sequelize
   .sync()
@@ -48,5 +49,7 @@ app.use("/api/user", userRoutes);
 
 app.use("/api/grounds", publicGroundRoutes);
 app.use("/api/location", locationRoutes);
+
+app.use("/api/bookings", bookingRoutes);
 
 module.exports = app;
