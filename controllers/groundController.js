@@ -268,6 +268,7 @@ exports.updateGround = async (req, res) => {
 
     res.json({
       message: "Ground updated successfully",
+      ground,
     });
   } catch (error) {
     console.error("UPDATE GROUND ERROR:", error);
@@ -279,6 +280,27 @@ exports.updateGround = async (req, res) => {
  * DELETE GROUND (ADMIN)
  * DELETE /api/admin/grounds/:id
  */
+// exports.deleteGround = async (req, res) => {
+//   try {
+//     const ground = await Ground.findOne({
+//       where: {
+//         id: req.params.id,
+//         adminId: req.admin.id,
+//       },
+//     });
+
+//     if (!ground) {
+//       return res.status(404).json({ message: "Ground not found" });
+//     }
+
+//     await ground.destroy();
+//     res.json({ message: "Ground deleted successfully" });
+//   } catch (error) {
+//     console.error("DELETE GROUND ERROR:", error);
+//     res.status(500).json({ message: "Failed to delete ground" });
+//   }
+// };
+
 exports.deleteGround = async (req, res) => {
   try {
     const ground = await Ground.findOne({
@@ -286,14 +308,37 @@ exports.deleteGround = async (req, res) => {
         id: req.params.id,
         adminId: req.admin.id,
       },
+      include: {
+        model: GroundImage,
+        as: "images",
+      },
     });
 
     if (!ground) {
-      return res.status(404).json({ message: "Ground not found" });
+      return res
+        .status(404)
+        .json({ message: "Ground not found or access denied" });
     }
 
+    // 🔥 DELETE IMAGE FILES FROM UPLOADS
+    if (ground.images && ground.images.length > 0) {
+      ground.images.forEach((img) => {
+        const filePath = path.join(
+          __dirname,
+          "..",
+          img.imageUrl // example: /uploads/123.jpg
+        );
+
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      });
+    }
+
+    // 🔥 DELETE DB RECORD (CASCADE WILL DELETE GroundImages)
     await ground.destroy();
-    res.json({ message: "Ground deleted successfully" });
+
+    res.json({ message: "Ground and images deleted successfully" });
   } catch (error) {
     console.error("DELETE GROUND ERROR:", error);
     res.status(500).json({ message: "Failed to delete ground" });
@@ -357,9 +402,10 @@ exports.deleteGroundImage = async (req, res) => {
  * GET ALL GROUNDS (PUBLIC)
  * GET /api/grounds
  */
-exports.getGrounds = async (req, res) => {
+exports.getPublicGrounds = async (req, res) => {
   try {
     const grounds = await Ground.findAll({
+      where: { isActive: true },
       include: [
         {
           model: GroundImage,
@@ -371,9 +417,23 @@ exports.getGrounds = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
-    res.json(grounds);
+    const formatted = grounds.map((g) => ({
+      id: g.id,
+      name: g.name,
+      pricePerSlot: g.pricePerSlot,
+      game: g.game,
+      area: g.area,
+      city: g.city,
+      state: g.state,
+      country: g.country,
+      openingTime: g.openingTime,
+      closingTime: g.closingTime,
+      images: g.images || [],
+    }));
+
+    res.json(formatted);
   } catch (error) {
-    console.error("GET GROUNDS ERROR:", error);
+    console.error("GET PUBLIC GROUNDS ERROR:", error);
     res.status(500).json({ message: "Failed to fetch grounds" });
   }
 };
@@ -382,6 +442,52 @@ exports.getGrounds = async (req, res) => {
  * GET SINGLE GROUND (PUBLIC)
  * GET /api/grounds/:id
  */
+exports.getPublicGroundById = async (req, res) => {
+  try {
+    const ground = await Ground.findOne({
+      where: {
+        id: req.params.id,
+        isActive: true,
+      },
+      include: [
+        {
+          model: GroundImage,
+          as: "images",
+          attributes: ["imageUrl"],
+        },
+        {
+          model: Slot,
+          as: "slots",
+          attributes: ["id", "startTime", "endTime"],
+          where: { isActive: true },
+          required: false,
+        },
+      ],
+    });
+
+    if (!ground) {
+      return res.status(404).json({ message: "Ground not found" });
+    }
+
+    res.json({
+      id: ground.id,
+      name: ground.name,
+      pricePerSlot: ground.pricePerSlot,
+      game: ground.game,
+      area: ground.area,
+      city: ground.city,
+      state: ground.state,
+      country: ground.country,
+      openingTime: ground.openingTime,
+      closingTime: ground.closingTime,
+      images: ground.images || [],
+      slots: ground.slots || [],
+    });
+  } catch (error) {
+    console.error("GET PUBLIC GROUND ERROR:", error);
+    res.status(500).json({ message: "Failed to fetch ground" });
+  }
+};
 exports.getGroundById = async (req, res) => {
   try {
     const ground = await Ground.findByPk(req.params.id, {
