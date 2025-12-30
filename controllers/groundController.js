@@ -1,6 +1,13 @@
 const { Booking } = require("../models");
 const { Op } = require("sequelize");
-const { Ground, GroundImage, Slot } = require("../models");
+const {
+  Ground,
+  GroundImage,
+  Slot,
+  Country,
+  State,
+  City,
+} = require("../models");
 const fs = require("fs");
 const path = require("path");
 
@@ -33,7 +40,9 @@ exports.createGround = async (req, res) => {
       country: req.body.country,
       state: req.body.state,
       city: req.body.city,
-      cityId: req.body.city, // FK
+      cityId: req.body.city,
+      stateId: req.body.state,
+      countryId: req.body.country,
       game: req.body.game,
       openingTime: req.body.openingTime,
       closingTime: req.body.closingTime,
@@ -78,25 +87,41 @@ exports.getAdminGrounds = async (req, res) => {
   try {
     const grounds = await Ground.findAll({
       where: { adminId: req.admin.id },
-      include: {
-        model: GroundImage,
-        as: "images",
-        attributes: ["imageUrl"],
-        required: false,
-      },
+      include: [
+        {
+          model: Country,
+          as: "Country",
+          attributes: ["id", "name"],
+        },
+        {
+          model: State,
+          as: "State",
+          attributes: ["id", "name"],
+        },
+        {
+          model: City,
+          as: "City",
+          attributes: ["id", "name"],
+        },
+        {
+          model: GroundImage,
+          as: "images",
+          attributes: ["imageUrl"],
+          required: false,
+        },
+      ],
       order: [["createdAt", "DESC"]],
     });
 
-    // ⚠️ Do NOT JSON.parse fields that don't exist
     const formatted = grounds.map((g) => ({
       id: g.id,
       name: g.name,
       contactNo: g.contactNo,
       pricePerSlot: g.pricePerSlot,
       area: g.area,
-      country: g.country,
-      state: g.state,
-      city: g.city,
+      country: g.Country.name,
+      state: g.State.name,
+      city: g.City.name,
       game: g.game,
       openingTime: g.openingTime,
       closingTime: g.closingTime,
@@ -175,45 +200,6 @@ exports.getAdminGroundById = async (req, res) => {
  * UPDATE GROUND (ADMIN)
  * PUT /api/admin/grounds/:id
  */
-
-// exports.updateGround = async (req, res) => {
-//   try {
-//     const updates = req.body;
-
-//     if (updates.games) {
-//       updates.games = JSON.stringify(
-//         Array.isArray(updates.games) ? updates.games : [updates.games]
-//       );
-//     }
-
-//     if (req.file) {
-//       updates.image = req.file.path;
-//     }
-
-//     const ground = await Ground.findOne({
-//       where: {
-//         id: req.params.id,
-//         adminId: req.admin.id,
-//       },
-//     });
-
-//     if (!ground) {
-//       return res
-//         .status(404)
-//         .json({ message: "Ground not found or access denied" });
-//     }
-
-//     await ground.update(updates);
-
-//     res.json({
-//       message: "Ground updated successfully",
-//       ground,
-//     });
-//   } catch (error) {
-//     console.error("UPDATE GROUND ERROR:", error);
-//     res.status(500).json({ message: error.message });
-//   }
-// };
 
 exports.updateGround = async (req, res) => {
   try {
@@ -439,7 +425,7 @@ exports.getPublicGroundById = async (req, res) => {
         },
         {
           model: Slot,
-          as: "slots",
+          as: "Slots",
           attributes: ["id", "startTime", "endTime"],
           where: { isActive: true },
           required: false,
@@ -463,7 +449,7 @@ exports.getPublicGroundById = async (req, res) => {
       openingTime: ground.openingTime,
       closingTime: ground.closingTime,
       images: ground.images || [],
-      slots: ground.slots || [],
+      slots: ground.Slots || [],
     });
   } catch (error) {
     console.error("GET PUBLIC GROUND ERROR:", error);

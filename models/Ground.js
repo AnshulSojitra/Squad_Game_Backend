@@ -77,6 +77,15 @@ const Ground = sequelize.define(
       type: DataTypes.BIGINT,
       field: "cityId",
     },
+
+    countryId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    stateId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
   },
   {
     tableName: "Grounds",

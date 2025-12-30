@@ -36,6 +36,7 @@ Ground.belongsTo(Admin, {
 Ground.hasMany(Slot, {
   foreignKey: {
     name: "groundId",
+    as: "Slots",
     allowNull: false,
   },
   onDelete: "CASCADE",
@@ -93,17 +94,20 @@ Booking.belongsTo(Slot, {
 Country.hasMany(State, {
   foreignKey: { name: "countryId", allowNull: false },
 });
-State.belongsTo(Country, { foreignKey: "countryId" });
+State.belongsTo(Country, { as: "Country", foreignKey: "countryId" });
 
 State.hasMany(City, {
   foreignKey: { name: "stateId", allowNull: false },
 });
-City.belongsTo(State, { foreignKey: "stateId" });
+City.belongsTo(State, { as: "State", foreignKey: "stateId" });
 
 City.hasMany(Ground, {
   foreignKey: { name: "cityId", allowNull: false },
 });
-Ground.belongsTo(City, { foreignKey: "cityId" });
+Ground.belongsTo(City, { as: "City", foreignKey: "cityId" });
+
+Ground.belongsTo(State, { as: "State", foreignKey: "stateId" });
+Ground.belongsTo(Country, { as: "Country", foreignKey: "countryId" });
 
 /* ================= EXPORT ================= */
 
