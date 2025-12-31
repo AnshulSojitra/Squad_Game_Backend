@@ -486,7 +486,7 @@ exports.getPublicGroundById = async (req, res) => {
 //   }
 // };
 
-exports.getGroundById = async (req, res) => {
+exports.getAdminGroundById = async (req, res) => {
   try {
     const ground = await Ground.findOne({
       where: {

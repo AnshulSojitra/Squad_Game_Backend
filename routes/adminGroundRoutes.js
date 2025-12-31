@@ -1,23 +1,3 @@
-// const express = require("express");
-// const router = express.Router();
-
-// const adminAuth = require("../middleware/authMiddleware");
-// const upload = require("../middleware/uploadMiddleware");
-// const {
-//   createGround,
-//   updateGround,
-//   deleteGround,
-//   getGrounds, // admin list
-// } = require("../controllers/groundController");
-
-// // ADMIN ONLY
-// router.post("/", adminAuth, upload.single("image"), createGround);
-// router.get("/", adminAuth, getGrounds);
-// router.put("/:id", adminAuth, upload.single("image"), updateGround);
-// router.delete("/:id", adminAuth, deleteGround);
-
-// module.exports = router;
-
 const express = require("express");
 const router = express.Router();
 
@@ -29,7 +9,7 @@ const upload = require("../middleware/uploadMiddleware");
 const {
   createGround,
   getAdminGrounds,
-  getGroundById,
+  getAdminGroundById,
   updateGround,
   deleteGround,
 } = require("../controllers/groundController");
@@ -38,12 +18,7 @@ const {
  * @route   POST /api/admin/grounds
  * @desc    Create new ground (Admin only)
  */
-router.post(
-  "/",
-  adminAuth,
-  upload.array("images", 5), // ⚠️ MUST MATCH frontend: formData.append("images", file)
-  createGround
-);
+router.post("/", adminAuth, upload.array("images", 5), createGround);
 
 /**
  * @route   GET /api/admin/grounds
@@ -55,7 +30,7 @@ router.get("/", adminAuth, getAdminGrounds);
  * @route   GET /api/admin/grounds/:id
  * @desc    Get single ground by id (Admin only)
  */
-router.get("/:id", adminAuth, getGroundById);
+router.get("/:id", adminAuth, getAdminGroundById);
 
 /**
  * @route   PUT /api/admin/grounds/:id
