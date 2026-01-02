@@ -10,6 +10,7 @@ const {
 } = require("../models");
 const fs = require("fs");
 const path = require("path");
+const { to12Hour } = require("../utils/time");
 
 /* ======================================================
    ADMIN CONTROLLERS
@@ -33,9 +34,9 @@ exports.createGround = async (req, res) => {
 
     // Create ground
     const ground = await Ground.create({
-      name: req.body.groundName,
-      contactNo: req.body.contact,
-      pricePerSlot: req.body.pricePerHour,
+      name: req.body.name,
+      contactNo: req.body.contactNo,
+      pricePerSlot: req.body.pricePerSlot,
       area: req.body.area,
       country: req.body.country,
       state: req.body.state,
@@ -123,8 +124,8 @@ exports.getAdminGrounds = async (req, res) => {
       state: g.State.name,
       city: g.City.name,
       game: g.game,
-      openingTime: g.openingTime,
-      closingTime: g.closingTime,
+      openingTime: to12Hour(g.openingTime),
+      closingTime: to12Hour(g.closingTime),
       isActive: g.isActive,
       createdAt: g.createdAt,
       images: g.images,
@@ -185,8 +186,8 @@ exports.getAdminGroundById = async (req, res) => {
       slots:
         ground.slots?.map((s) => ({
           id: s.id,
-          start: s.startTime,
-          end: s.endTime,
+          start: to12Hour(s.startTime),
+          end: to12Hour(s.endTime),
           isActive: s.isActive,
         })) || [],
     });
@@ -232,7 +233,7 @@ exports.updateGround = async (req, res) => {
 
     // 2️⃣ If new images uploaded → replace old ones
     if (req.files && req.files.length > 0) {
-      // 🔥 Delete old image files (optional but recommended)
+      // 🔥 Delete old image files
       for (const img of ground.images) {
         const filePath = path.join(__dirname, "..", img.imageUrl);
         if (fs.existsSync(filePath)) {
@@ -457,35 +458,6 @@ exports.getPublicGroundById = async (req, res) => {
   }
 };
 
-// GET SINGLE GROUND BY ID (FOR BOOKING)
-// exports.getGroundById = async (req, res) => {
-//   try {
-//     const ground = await Ground.findByPk(req.params.id, {
-//       include: [
-//         {
-//           model: GroundImage,
-//           as: "images",
-//           attributes: ["imageUrl"],
-//         },
-//         {
-//           model: Slot,
-//           as: "slots",
-//           attributes: ["startTime", "endTime"],
-//         },
-//       ],
-//     });
-
-//     if (!ground) {
-//       return res.status(404).json({ message: "Ground not found" });
-//     }
-
-//     res.json(ground);
-//   } catch (error) {
-//     console.error("GET GROUND ERROR:", error);
-//     res.status(500).json({ message: "Failed to fetch ground" });
-//   }
-// };
-
 exports.getAdminGroundById = async (req, res) => {
   try {
     const ground = await Ground.findOne({
@@ -530,7 +502,7 @@ exports.getSlotAvailability = async (req, res) => {
       return res.status(400).json({ message: "Date is required" });
     }
 
-    // 1️⃣ Get all slots for this ground
+    // Get all slots for this ground
     const slots = await Slot.findAll({
       where: { groundId },
       order: [["startTime", "ASC"]],
@@ -542,7 +514,7 @@ exports.getSlotAvailability = async (req, res) => {
 
     const slotIds = slots.map((s) => s.id);
 
-    // 2️⃣ Get bookings for these slots on the given date
+    // Get bookings for these slots on the given date
     const bookings = await Booking.findAll({
       where: {
         slotId: { [Op.in]: slotIds },
@@ -554,7 +526,7 @@ exports.getSlotAvailability = async (req, res) => {
 
     const bookedSlotIds = bookings.map((b) => b.slotId);
 
-    // 3️⃣ Build availability response
+    //  Build availability response
     const availability = slots.map((slot) => ({
       slotId: slot.id,
       startTime: slot.startTime,

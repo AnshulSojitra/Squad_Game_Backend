@@ -5,4 +5,6 @@ const userAuth = require("../middleware/userAuthMiddleware");
 
 router.post("/", userAuth, bookingController.createBooking);
 
+router.put("/:id/cancel", userAuth, bookingController.cancelBooking);
+
 module.exports = router;
