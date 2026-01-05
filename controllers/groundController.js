@@ -255,6 +255,49 @@ exports.updateGround = async (req, res) => {
       await GroundImage.bulkCreate(newImages);
     }
 
+    let slots = [];
+
+    if (req.body.slots) {
+      try {
+        slots = JSON.parse(req.body.slots);
+      } catch (err) {
+        return res.status(400).json({
+          message: "Invalid slots format",
+        });
+      }
+    }
+
+    // 3️⃣ Update slots if provided
+    // if (req.body.slots && Array.isArray(req.body.slots)) {
+    //   // 🔥 Delete old slots
+    //   await Slot.destroy({
+    //     where: { groundId: ground.id },
+    //   });
+
+    //   // 🔥 Insert new slots
+    //   const slotsData = req.body.slots.map((slot) => ({
+    //     groundId: ground.id,
+    //     startTime: slot.startTime,
+    //     endTime: slot.endTime,
+    //   }));
+
+    //   await Slot.bulkCreate(slotsData);
+    // }
+    // 3️⃣ Update slots
+    if (slots.length > 0) {
+      await Slot.destroy({
+        where: { groundId: ground.id },
+      });
+
+      const slotsData = slots.map((slot) => ({
+        groundId: ground.id,
+        startTime: slot.start || slot.startTime,
+        endTime: slot.end || slot.endTime,
+      }));
+
+      await Slot.bulkCreate(slotsData);
+    }
+
     res.json({
       message: "Ground updated successfully",
       ground,
@@ -482,7 +525,14 @@ exports.getAdminGroundById = async (req, res) => {
       return res.status(404).json({ message: "Ground not found" });
     }
 
-    res.json(ground);
+    const groundData = ground.toJSON();
+    groundData.Slots = groundData.Slots.map((slot) => ({
+      ...slot,
+      startTime: to12Hour(slot.startTime),
+      endTime: to12Hour(slot.endTime),
+    }));
+
+    res.json(groundData);
   } catch (error) {
     console.error("GET ADMIN GROUND ERROR:", error.message);
     res.status(500).json({ message: error.message });
