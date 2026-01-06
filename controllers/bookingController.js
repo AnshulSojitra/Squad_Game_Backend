@@ -1,13 +1,13 @@
-const { Booking, Slot, Ground, sequelize } = require("../models");
+const { Booking, Slot, Ground, User, sequelize } = require("../models");
 const { Op } = require("sequelize");
 
 /**
  * CREATE BOOKING
  * POST /api/bookings
  */
+
 exports.createBooking = async (req, res) => {
   const { slotId, date } = req.body;
-  const userId = req.user.id;
 
   if (!slotId || !date) {
     return res.status(400).json({ message: "Missing required fields" });
@@ -21,6 +21,7 @@ exports.createBooking = async (req, res) => {
           model: Ground,
           attributes: ["id", "name", "area", "pricePerSlot"],
         },
+        transaction: t,
       });
 
       if (!slot) {
@@ -32,7 +33,7 @@ exports.createBooking = async (req, res) => {
         where: {
           slotId,
           date,
-          status: "confirmed",
+          status: "CONFIRMED",
         },
         transaction: t,
       });
@@ -42,14 +43,17 @@ exports.createBooking = async (req, res) => {
       }
 
       //  Create booking
-      const booking = await Booking.create({
-        userId: req.user.id,
-        slotId,
-        date,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        totalPrice: slot.Ground.pricePerSlot, // ✅ FIX
-      });
+      const booking = await Booking.create(
+        {
+          userId: req.user.id,
+          slotId,
+          date,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          totalPrice: slot.Ground.pricePerSlot,
+        },
+        { transaction: t }
+      );
     });
 
     res.status(201).json({
@@ -64,7 +68,7 @@ exports.createBooking = async (req, res) => {
 exports.cancelBooking = async (req, res) => {
   try {
     const bookingId = req.params.id;
-    const userId = req.user.id; // coming from auth middleware
+    const userId = req.user.id;
 
     const booking = await Booking.findOne({
       where: {
@@ -101,5 +105,60 @@ exports.cancelBooking = async (req, res) => {
       success: false,
       message: "Something went wrong",
     });
+  }
+};
+
+exports.getAdminBookings = async (req, res) => {
+  try {
+    const adminId = req.admin.id;
+
+    const bookings = await Booking.findAll({
+      include: [
+        {
+          model: User,
+          attributes: ["id", "name", "email"],
+        },
+        {
+          model: Slot,
+          attributes: ["id", "startTime", "endTime"],
+          include: {
+            model: Ground,
+            where: { adminId },
+            attributes: ["id", "name"],
+          },
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    const formatted = bookings.map((b) => ({
+      bookingId: b.id,
+      bookingDate: b.date,
+      status: b.status,
+
+      user: {
+        id: b.User.id,
+        name: b.User.name,
+        email: b.User.email,
+      },
+
+      ground: {
+        id: b.Slot.Ground.id,
+        name: b.Slot.Ground.name,
+      },
+
+      slot: {
+        id: b.Slot.id,
+        startTime: b.Slot.startTime,
+        endTime: b.Slot.endTime,
+      },
+
+      createdAt: b.createdAt,
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error("GET ADMIN BOOKINGS ERROR:", error);
+    res.status(500).json({ message: "Failed to fetch bookings" });
   }
 };

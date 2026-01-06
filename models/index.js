@@ -11,6 +11,7 @@ const Booking = require("./Booking");
 const Country = require("./Country");
 const State = require("./State");
 const City = require("./City");
+const Amenity = require("./Amenity");
 
 /* ================= RELATIONS ================= */
 
@@ -74,6 +75,12 @@ Booking.belongsTo(User, {
   foreignKey: "userId",
 });
 
+// Ground.hasMany(Booking, {
+//   foreignKey: { name: "groundId", allowNull: false },
+//   onDelete: "CASCADE",
+// });
+// Booking.belongsTo(Ground, { foreignKey: "groundId" });
+
 /**
  * Slot → Bookings
  * Each booking is for a specific slot
@@ -109,6 +116,16 @@ Ground.belongsTo(City, { as: "City", foreignKey: "cityId" });
 Ground.belongsTo(State, { as: "State", foreignKey: "stateId" });
 Ground.belongsTo(Country, { as: "Country", foreignKey: "countryId" });
 
+Ground.hasMany(Amenity, {
+  foreignKey: "groundId",
+  as: "amenities",
+  onDelete: "CASCADE",
+});
+
+Amenity.belongsTo(Ground, {
+  foreignKey: "groundId",
+});
+
 /* ================= EXPORT ================= */
 
 module.exports = {
@@ -122,4 +139,5 @@ module.exports = {
   Country,
   State,
   City,
+  Amenity,
 };

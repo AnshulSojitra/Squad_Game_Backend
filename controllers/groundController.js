@@ -7,10 +7,11 @@ const {
   Country,
   State,
   City,
+  Amenity,
 } = require("../models");
 const fs = require("fs");
 const path = require("path");
-const { to12Hour } = require("../utils/time");
+const { to12Hour, to24Hours } = require("../utils/time");
 
 /* ======================================================
    ADMIN CONTROLLERS
@@ -32,11 +33,16 @@ exports.createGround = async (req, res) => {
         ? JSON.parse(req.body.slots)
         : req.body.slots;
 
+    const amenities =
+      typeof req.body.amenities === "string"
+        ? JSON.parse(req.body.amenities)
+        : req.body.amenities;
+
     // Create ground
     const ground = await Ground.create({
-      name: req.body.name,
-      contactNo: req.body.contactNo,
-      pricePerSlot: req.body.pricePerSlot,
+      name: req.body.groundName,
+      contactNo: req.body.contact,
+      pricePerSlot: req.body.pricePerHour,
       area: req.body.area,
       country: req.body.country,
       state: req.body.state,
@@ -57,6 +63,16 @@ exports.createGround = async (req, res) => {
       imageUrl: `/uploads/${file.filename}`,
     }));
     await GroundImage.bulkCreate(images);
+
+    // Save amenities
+
+    if (Array.isArray(amenities) && amenities.length > 0) {
+      const amenityRows = amenities.map((a) => ({
+        groundId: ground.id,
+        name: a,
+      }));
+      await Amenity.bulkCreate(amenityRows);
+    }
 
     // Save slots
     if (Array.isArray(slots) && slots.length > 0) {
@@ -110,6 +126,15 @@ exports.getAdminGrounds = async (req, res) => {
           attributes: ["imageUrl"],
           required: false,
         },
+        {
+          model: Amenity,
+          as: "amenities",
+          attributes: ["id", "name"],
+        },
+        {
+          model: Slot,
+          as: "Slots",
+        },
       ],
       order: [["createdAt", "DESC"]],
     });
@@ -129,6 +154,8 @@ exports.getAdminGrounds = async (req, res) => {
       isActive: g.isActive,
       createdAt: g.createdAt,
       images: g.images,
+      Slots: g.Slots,
+      amenities: g.amenities,
     }));
 
     res.json(formatted);
@@ -142,6 +169,7 @@ exports.getAdminGrounds = async (req, res) => {
  * GET SINGLE GROUND (ADMIN - FOR EDIT)
  * GET /api/admin/grounds/:id
  */
+
 exports.getAdminGroundById = async (req, res) => {
   try {
     const ground = await Ground.findOne({
@@ -154,13 +182,15 @@ exports.getAdminGroundById = async (req, res) => {
           model: GroundImage,
           as: "images",
           attributes: ["id", "imageUrl"],
-          required: false,
         },
         {
           model: Slot,
-          as: "slots",
-          attributes: ["id", "startTime", "endTime", "isActive"],
-          required: false,
+          as: "Slots",
+        },
+        {
+          model: Amenity,
+          as: "amenities",
+          attributes: ["id", "name"],
         },
       ],
     });
@@ -169,31 +199,24 @@ exports.getAdminGroundById = async (req, res) => {
       return res.status(404).json({ message: "Ground not found" });
     }
 
-    res.json({
-      id: ground.id,
-      groundName: ground.name,
-      contact: ground.contactNo,
-      pricePerHour: ground.pricePerSlot,
-      game: ground.game,
-      addressName: ground.addressName || "",
-      area: ground.area,
-      country: ground.country,
-      state: ground.state,
-      city: ground.city,
-      openingTime: ground.openingTime,
-      closingTime: ground.closingTime,
-      images: ground.images || [],
-      slots:
-        ground.slots?.map((s) => ({
-          id: s.id,
-          start: to12Hour(s.startTime),
-          end: to12Hour(s.endTime),
-          isActive: s.isActive,
-        })) || [],
-    });
+    const groundData = ground.toJSON();
+    groundData.Slots = groundData.Slots.map((slot) => ({
+      ...slot,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+    }));
+
+    groundData.amenities = groundData.amenities.map((amenity) => ({
+      ...amenity,
+      id: amenity.id,
+      groundId: amenity.groundId,
+      name: amenity.name,
+    }));
+
+    res.json(groundData);
   } catch (error) {
-    console.error("GET ADMIN GROUND ERROR:", error);
-    res.status(500).json({ message: "Failed to fetch ground" });
+    console.error("GET ADMIN GROUND ERROR:", error.message);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -233,7 +256,7 @@ exports.updateGround = async (req, res) => {
 
     // 2️⃣ If new images uploaded → replace old ones
     if (req.files && req.files.length > 0) {
-      // 🔥 Delete old image files
+      //  Delete old image files
       for (const img of ground.images) {
         const filePath = path.join(__dirname, "..", img.imageUrl);
         if (fs.existsSync(filePath)) {
@@ -241,12 +264,12 @@ exports.updateGround = async (req, res) => {
         }
       }
 
-      // 🔥 Delete old DB records
+      //  Delete old DB records
       await GroundImage.destroy({
         where: { groundId: ground.id },
       });
 
-      // 🔥 Insert new images
+      //  Insert new images
       const newImages = req.files.map((file) => ({
         groundId: ground.id,
         imageUrl: `/uploads/${file.filename}`,
@@ -254,6 +277,33 @@ exports.updateGround = async (req, res) => {
 
       await GroundImage.bulkCreate(newImages);
     }
+
+    //  Update amenities
+    let amenities = [];
+
+    if (req.body.amenities) {
+      try {
+        amenities = JSON.parse(req.body.amenities);
+      } catch (err) {
+        return res.status(400).json({
+          message: "Invalid amenities format",
+        });
+      }
+    }
+    if (amenities.length > 0) {
+      await Amenity.destroy({
+        where: { groundId: ground.id },
+      });
+
+      const amenitiesData = amenities.map((amenity) => ({
+        groundId: ground.id,
+        name: amenity,
+      }));
+
+      await Amenity.bulkCreate(amenitiesData);
+    }
+
+    // 3️⃣ Update slots
 
     let slots = [];
 
@@ -267,23 +317,6 @@ exports.updateGround = async (req, res) => {
       }
     }
 
-    // 3️⃣ Update slots if provided
-    // if (req.body.slots && Array.isArray(req.body.slots)) {
-    //   // 🔥 Delete old slots
-    //   await Slot.destroy({
-    //     where: { groundId: ground.id },
-    //   });
-
-    //   // 🔥 Insert new slots
-    //   const slotsData = req.body.slots.map((slot) => ({
-    //     groundId: ground.id,
-    //     startTime: slot.startTime,
-    //     endTime: slot.endTime,
-    //   }));
-
-    //   await Slot.bulkCreate(slotsData);
-    // }
-    // 3️⃣ Update slots
     if (slots.length > 0) {
       await Slot.destroy({
         where: { groundId: ground.id },
@@ -335,11 +368,7 @@ exports.deleteGround = async (req, res) => {
     // DELETE IMAGE FILES FROM UPLOADS
     if (ground.images && ground.images.length > 0) {
       ground.images.forEach((img) => {
-        const filePath = path.join(
-          __dirname,
-          "..",
-          img.imageUrl // example: /uploads/123.jpg
-        );
+        const filePath = path.join(__dirname, "..", img.imageUrl);
 
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
@@ -347,7 +376,7 @@ exports.deleteGround = async (req, res) => {
       });
     }
 
-    //DELETE DB RECORD (CASCADE WILL DELETE GroundImages)
+    //DELETE DB RECORD
     await ground.destroy();
 
     res.json({ message: "Ground and images deleted successfully" });
@@ -420,10 +449,34 @@ exports.getPublicGrounds = async (req, res) => {
       where: { isActive: true },
       include: [
         {
+          model: Country,
+          as: "Country",
+          attributes: ["id", "name"],
+        },
+        {
+          model: State,
+          as: "State",
+          attributes: ["id", "name"],
+        },
+        {
+          model: City,
+          as: "City",
+          attributes: ["id", "name"],
+        },
+        {
           model: GroundImage,
           as: "images",
           attributes: ["imageUrl"],
           required: false,
+        },
+        {
+          model: Amenity,
+          as: "amenities",
+          attributes: ["id", "name"],
+        },
+        {
+          model: Slot,
+          as: "Slots",
         },
       ],
       order: [["createdAt", "DESC"]],
@@ -435,12 +488,14 @@ exports.getPublicGrounds = async (req, res) => {
       pricePerSlot: g.pricePerSlot,
       game: g.game,
       area: g.area,
-      city: g.city,
-      state: g.state,
-      country: g.country,
-      openingTime: g.openingTime,
-      closingTime: g.closingTime,
+      city: g.City.name,
+      state: g.State.name,
+      country: g.Country.name,
+      openingTime: to12Hour(g.openingTime),
+      closingTime: to12Hour(g.closingTime),
+      amenities: g.amenities,
       images: g.images || [],
+      Slots: g.Slots,
     }));
 
     res.json(formatted);
@@ -468,11 +523,30 @@ exports.getPublicGroundById = async (req, res) => {
           attributes: ["imageUrl"],
         },
         {
+          model: Amenity,
+          as: "amenities",
+        },
+        {
           model: Slot,
           as: "Slots",
           attributes: ["id", "startTime", "endTime"],
           where: { isActive: true },
           required: false,
+        },
+        {
+          model: Country,
+          as: "Country",
+          attributes: ["id", "name"],
+        },
+        {
+          model: State,
+          as: "State",
+          attributes: ["id", "name"],
+        },
+        {
+          model: City,
+          as: "City",
+          attributes: ["id", "name"],
         },
       ],
     });
@@ -487,55 +561,18 @@ exports.getPublicGroundById = async (req, res) => {
       pricePerSlot: ground.pricePerSlot,
       game: ground.game,
       area: ground.area,
-      city: ground.city,
-      state: ground.state,
-      country: ground.country,
+      city: ground.City.name,
+      state: ground.State.name,
+      country: ground.Country.name,
       openingTime: ground.openingTime,
       closingTime: ground.closingTime,
       images: ground.images || [],
       slots: ground.Slots || [],
+      amenities: ground.amenities || [],
     });
   } catch (error) {
     console.error("GET PUBLIC GROUND ERROR:", error);
     res.status(500).json({ message: "Failed to fetch ground" });
-  }
-};
-
-exports.getAdminGroundById = async (req, res) => {
-  try {
-    const ground = await Ground.findOne({
-      where: {
-        id: req.params.id,
-        adminId: req.admin.id,
-      },
-      include: [
-        {
-          model: GroundImage,
-          as: "images",
-          attributes: ["id", "imageUrl"],
-        },
-        {
-          model: Slot,
-          as: "Slots",
-        },
-      ],
-    });
-
-    if (!ground) {
-      return res.status(404).json({ message: "Ground not found" });
-    }
-
-    const groundData = ground.toJSON();
-    groundData.Slots = groundData.Slots.map((slot) => ({
-      ...slot,
-      startTime: to12Hour(slot.startTime),
-      endTime: to12Hour(slot.endTime),
-    }));
-
-    res.json(groundData);
-  } catch (error) {
-    console.error("GET ADMIN GROUND ERROR:", error.message);
-    res.status(500).json({ message: error.message });
   }
 };
 

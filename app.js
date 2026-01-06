@@ -15,12 +15,12 @@ if (!fs.existsSync(uploadDir)) {
 // Routes
 
 const adminRoutes = require("./routes/adminRoutes");
-const groundRoutes = require("./routes/groundRoutes");
 const adminGroundRoutes = require("./routes/adminGroundRoutes");
 const sequelize = require("./config/db");
 const locationRoutes = require("./routes/locationRoutes");
 const publicGroundRoutes = require("./routes/publicGroundRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
+const adminBookingRoutes = require("./routes/adminBookingRoutes");
 
 sequelize
   .sync()
@@ -30,6 +30,7 @@ sequelize
 const app = express();
 
 // Middleware
+
 app.use(cors());
 app.use(express.json());
 app.use((req, res, next) => {
@@ -39,7 +40,6 @@ app.use((req, res, next) => {
 });
 
 app.use(express.urlencoded({ extended: true }));
-// app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Health check
@@ -57,5 +57,7 @@ app.use("/api/grounds", publicGroundRoutes);
 app.use("/api/location", locationRoutes);
 
 app.use("/api/bookings", bookingRoutes);
+
+app.use("/api/admin/bookings", adminBookingRoutes);
 
 module.exports = app;
