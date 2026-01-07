@@ -249,6 +249,8 @@ exports.updateGround = async (req, res) => {
       state: req.body.state,
       city: req.body.city,
       cityId: req.body.city,
+      stateId: req.body.state,
+      countryId: req.body.country,
       game: req.body.game,
       openingTime: req.body.openingTime,
       closingTime: req.body.closingTime,
