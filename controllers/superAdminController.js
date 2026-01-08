@@ -189,3 +189,38 @@ exports.cancelBooking = async (req, res) => {
     res.status(500).json({ message: "Failed to cancel booking" });
   }
 };
+
+exports.completeBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const booking = await Booking.findByPk(id);
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    if (booking.status === "cancelled") {
+      return res.status(400).json({
+        message: "Cancelled booking cannot be completed",
+      });
+    }
+
+    if (booking.status === "completed") {
+      return res.status(400).json({
+        message: "Booking already completed",
+      });
+    }
+
+    booking.status = "completed";
+    await booking.save();
+
+    res.status(200).json({
+      message: "Booking marked as completed",
+      bookingId: booking.id,
+    });
+  } catch (error) {
+    console.error("Complete booking error:", error);
+    res.status(500).json({ message: "Failed to complete booking" });
+  }
+};

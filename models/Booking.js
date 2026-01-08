@@ -40,9 +40,11 @@ const Booking = sequelize.define("Booking", {
   },
 
   status: {
-    type: DataTypes.ENUM("confirmed", "cancelled"),
+    type: DataTypes.ENUM("confirmed", "cancelled", "completed"),
     defaultValue: "confirmed",
   },
 });
+
+// sequelize.sync({ alter: true });
 
 module.exports = Booking;

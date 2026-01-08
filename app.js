@@ -22,6 +22,7 @@ const locationRoutes = require("./routes/locationRoutes");
 const publicGroundRoutes = require("./routes/publicGroundRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 const adminBookingRoutes = require("./routes/adminBookingRoutes");
+const autoCompleteBookings = require("./cron/autoCompleteBookings");
 
 sequelize
   .sync()
@@ -30,6 +31,7 @@ sequelize
 
 const app = express();
 
+autoCompleteBookings();
 // Middleware
 
 app.use(cors());

@@ -12,6 +12,7 @@ const {
   toggleAdminBlock,
   getAllBookings,
   cancelBooking,
+  completeBooking,
 } = require("../controllers/superAdminController");
 const { loginSuperAdmin } = require("../controllers/superAdminAuthController");
 
@@ -31,5 +32,6 @@ router.patch("/admin/block/:id", superAdminAuth, toggleAdminBlock);
 //BOOKING ROUTE
 router.get("/bookings", superAdminAuth, getAllBookings);
 router.patch("/bookings/:id/cancel", superAdminAuth, cancelBooking);
+router.patch("/bookings/:id/complete", superAdminAuth, completeBooking);
 
 module.exports = router;
