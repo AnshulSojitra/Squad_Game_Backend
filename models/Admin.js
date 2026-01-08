@@ -17,6 +17,12 @@ const Admin = sequelize.define("Admin", {
     type: DataTypes.STRING,
     defaultValue: "admin",
   },
+  isBlocked: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
 });
+
+// sequelize.sync({ alter: true });
 
 module.exports = Admin;

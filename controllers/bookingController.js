@@ -1,4 +1,13 @@
-const { Booking, Slot, Ground, User, sequelize } = require("../models");
+const {
+  Booking,
+  Slot,
+  Ground,
+  User,
+  Country,
+  State,
+  City,
+  sequelize,
+} = require("../models");
 const { Op } = require("sequelize");
 
 /**
@@ -315,6 +324,23 @@ exports.getMyBookings = async (req, res) => {
             {
               model: Ground,
               attributes: ["id", "name", "area"],
+              include: [
+                {
+                  model: Country,
+                  as: "Country",
+                  attributes: ["id", "name"],
+                },
+                {
+                  model: State,
+                  as: "State",
+                  attributes: ["id", "name"],
+                },
+                {
+                  model: City,
+                  as: "City",
+                  attributes: ["id", "name"],
+                },
+              ],
             },
           ],
         },
@@ -337,6 +363,10 @@ exports.getMyBookings = async (req, res) => {
         id: b.Slot?.Ground?.id,
         name: b.Slot?.Ground?.name,
         area: b.Slot?.Ground?.area,
+        game: b.Slot?.Ground?.game,
+        country: b.Slot?.Ground?.Country?.name,
+        state: b.Slot?.Ground?.State?.name,
+        city: b.Slot?.Ground?.City?.name,
       },
 
       slot: {

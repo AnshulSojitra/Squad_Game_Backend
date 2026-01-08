@@ -14,6 +14,7 @@ if (!fs.existsSync(uploadDir)) {
 
 // Routes
 
+const superAdminRoutes = require("./routes/superAdminRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const adminGroundRoutes = require("./routes/adminGroundRoutes");
 const sequelize = require("./config/db");
@@ -48,6 +49,8 @@ app.get("/", (req, res) => {
 });
 
 // API routes
+app.use("/api/super-admin", superAdminRoutes);
+
 app.use("/api/admin", adminRoutes);
 app.use("/api/admin/grounds", adminGroundRoutes);
 

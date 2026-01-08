@@ -25,6 +25,12 @@ const User = sequelize.define("User", {
     type: DataTypes.STRING,
     defaultValue: "user",
   },
+  isBlocked: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
 });
+
+// sequelize.sync({ alter: true });
 
 module.exports = User;

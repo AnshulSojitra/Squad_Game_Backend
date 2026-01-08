@@ -12,6 +12,7 @@ const Country = require("./Country");
 const State = require("./State");
 const City = require("./City");
 const Amenity = require("./Amenity");
+const SuperAdmin = require("./SuperAdmin");
 
 /* ================= RELATIONS ================= */
 
@@ -140,4 +141,5 @@ module.exports = {
   State,
   City,
   Amenity,
+  SuperAdmin,
 };

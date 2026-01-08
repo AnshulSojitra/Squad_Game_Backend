@@ -10,6 +10,11 @@ exports.loginAdmin = async (req, res) => {
     if (!admin) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
+    if (admin.isBlocked) {
+      return res.status(403).json({
+        message: "Your account has been blocked. Please contact support.",
+      });
+    }
 
     const isMatch = await bcrypt.compare(password, admin.password);
     if (!isMatch) {
