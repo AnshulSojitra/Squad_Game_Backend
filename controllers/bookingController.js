@@ -9,6 +9,9 @@ const {
   sequelize,
 } = require("../models");
 const { Op } = require("sequelize");
+const { sendEmail } = require("../utils/email");
+const bookingTemplate = require("../utils/templates/bookingConfirmation");
+const cancelTemplate = require("../utils/templates/bookingCancellation");
 
 /**
  * CREATE BOOKING
@@ -73,6 +76,72 @@ const { Op } = require("sequelize");
 //   }
 // };
 
+// exports.createBooking = async (req, res) => {
+//   const { slotIds, date } = req.body;
+
+//   if (!Array.isArray(slotIds) || slotIds.length === 0 || !date) {
+//     return res.status(400).json({
+//       message: "slotIds (array) and date are required",
+//     });
+//   }
+
+//   try {
+//     await sequelize.transaction(async (t) => {
+//       const slots = await Slot.findAll({
+//         where: {
+//           id: { [Op.in]: slotIds },
+//           isActive: true,
+//         },
+//         include: {
+//           model: Ground,
+//           attributes: ["pricePerSlot", "isBlocked"],
+//         },
+//         transaction: t,
+//       });
+
+//       if (slots.some((slot) => slot.Ground.isBlocked)) {
+//         throw new Error("This ground is currently blocked");
+//       }
+
+//       if (slots.length !== slotIds.length) {
+//         throw new Error("One or more slots are invalid");
+//       }
+
+//       const alreadyBooked = await Booking.findAll({
+//         where: {
+//           slotId: { [Op.in]: slotIds },
+//           date,
+//           status: "CONFIRMED",
+//         },
+//         transaction: t,
+//       });
+
+//       if (alreadyBooked.length > 0) {
+//         throw new Error("One or more slots are already booked");
+//       }
+
+//       const bookingsData = slots.map((slot) => ({
+//         userId: req.user.id,
+//         slotId: slot.id,
+//         date,
+//         startTime: slot.startTime,
+//         endTime: slot.endTime,
+//         totalPrice: slot.Ground.pricePerSlot,
+//         status: "CONFIRMED",
+//       }));
+
+//       await Booking.bulkCreate(bookingsData, { transaction: t });
+//     });
+
+//     res.status(201).json({
+//       message: "Booking confirmed",
+//     });
+//   } catch (error) {
+//     console.error("CREATE BOOKING ERROR:", error.message);
+//     res.status(400).json({ message: error.message });
+//   }
+// };
+
 exports.createBooking = async (req, res) => {
   const { slotIds, date } = req.body;
 
@@ -83,32 +152,34 @@ exports.createBooking = async (req, res) => {
   }
 
   try {
+    let slots; // 🔥 we need this outside transaction
+
     await sequelize.transaction(async (t) => {
-      const slots = await Slot.findAll({
+      slots = await Slot.findAll({
         where: {
           id: { [Op.in]: slotIds },
           isActive: true,
         },
         include: {
           model: Ground,
-          attributes: ["pricePerSlot", "isBlocked"],
+          attributes: ["name", "pricePerSlot", "isBlocked"],
         },
         transaction: t,
       });
 
-      if (slots.some((slot) => slot.Ground.isBlocked)) {
-        throw new Error("This ground is currently blocked");
-      }
-
       if (slots.length !== slotIds.length) {
         throw new Error("One or more slots are invalid");
+      }
+
+      if (slots.some((slot) => slot.Ground.isBlocked)) {
+        throw new Error("This ground is currently blocked");
       }
 
       const alreadyBooked = await Booking.findAll({
         where: {
           slotId: { [Op.in]: slotIds },
           date,
-          status: "CONFIRMED",
+          status: "confirmed", // ✅ FIXED
         },
         transaction: t,
       });
@@ -124,11 +195,45 @@ exports.createBooking = async (req, res) => {
         startTime: slot.startTime,
         endTime: slot.endTime,
         totalPrice: slot.Ground.pricePerSlot,
-        status: "CONFIRMED",
+        status: "confirmed", // ✅ FIXED
       }));
 
       await Booking.bulkCreate(bookingsData, { transaction: t });
     });
+
+    // =========================
+    // SEND CONFIRMATION EMAIL
+    // =========================
+    try {
+      const user = await User.findByPk(req.user.id);
+
+      slots.sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+      const slotTimes = slots.map(
+        (slot) => `${slot.startTime} - ${slot.endTime}`
+      );
+
+      const totalPrice = slots.reduce(
+        (sum, slot) => sum + slot.Ground.pricePerSlot,
+        0
+      );
+
+      await sendEmail({
+        to: user.email,
+        subject: "Your Booking is Confirmed 🎉",
+        html: bookingTemplate({
+          userName: user.name,
+          groundName: slots[0].Ground.name,
+          date,
+          startTime: slots[0].startTime,
+          endTime: slots[slots.length - 1].endTime,
+          slots: slotTimes,
+          price: totalPrice,
+        }),
+      });
+    } catch (emailError) {
+      console.error("BOOKING EMAIL FAILED:", emailError.message);
+    }
 
     res.status(201).json({
       message: "Booking confirmed",
@@ -139,46 +244,110 @@ exports.createBooking = async (req, res) => {
   }
 };
 
+// exports.cancelBooking = async (req, res) => {
+//   try {
+//     const bookingId = req.params.id;
+//     const userId = req.user.id;
+
+//     const booking = await Booking.findOne({
+//       where: {
+//         id: bookingId,
+//         userId,
+//       },
+//     });
+
+//     if (!booking) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Booking not found",
+//       });
+//     }
+
+//     if (booking.status === "CANCELLED") {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Booking already cancelled",
+//       });
+//     }
+
+//     booking.status = "CANCELLED";
+//     await booking.save();
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Booking cancelled successfully",
+//       data: booking,
+//     });
+//   } catch (error) {
+//     console.error("CANCEL BOOKING ERROR:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Something went wrong",
+//     });
+//   }
+// };
+
 exports.cancelBooking = async (req, res) => {
   try {
     const bookingId = req.params.id;
-    const userId = req.user.id;
+
+    if (!bookingId) {
+      return res.status(400).json({
+        message: "bookingId is required",
+      });
+    }
 
     const booking = await Booking.findOne({
       where: {
         id: bookingId,
-        userId,
+        status: "confirmed",
+        userId: req.user.id, // 🔐 user can cancel only own booking
       },
+      include: [
+        {
+          model: Slot,
+          include: [{ model: Ground }],
+        },
+        {
+          model: User,
+        },
+      ],
     });
 
     if (!booking) {
       return res.status(404).json({
-        success: false,
-        message: "Booking not found",
+        message: "Booking not found or already cancelled",
       });
     }
 
-    if (booking.status === "CANCELLED") {
-      return res.status(400).json({
-        success: false,
-        message: "Booking already cancelled",
-      });
-    }
-
-    booking.status = "CANCELLED";
+    // ✅ cancel booking
+    booking.status = "cancelled";
     await booking.save();
 
-    return res.status(200).json({
-      success: true,
-      message: "Booking cancelled successfully",
-      data: booking,
-    });
+    // =========================
+    // SEND CANCELLATION EMAIL
+    // =========================
+    try {
+      const slotTime = `${booking.Slot.startTime} - ${booking.Slot.endTime}`;
+
+      await sendEmail({
+        to: booking.User.email,
+        subject: "Your Booking Has Been Cancelled ❌",
+        html: cancelTemplate({
+          userName: booking.User.name,
+          groundName: booking.Slot.Ground.name,
+          date: booking.date,
+          slots: [slotTime],
+        }),
+      });
+    } catch (emailError) {
+      console.error("CANCELLATION EMAIL FAILED:", emailError.message);
+    }
+
+    res.json({ message: "Booking cancelled successfully" });
   } catch (error) {
-    console.error("CANCEL BOOKING ERROR:", error);
-    res.status(500).json({
-      success: false,
-      message: "Something went wrong",
-    });
+    console.error("Cancel booking error:", error);
+    res.status(500).json({ message: "Failed to cancel booking" });
   }
 };
 

@@ -11,9 +11,9 @@ const createAdmin = async () => {
 
     // Admin (Ground Owner) details
     const adminData = {
-      name: "Ground Owner",
-      email: "niraj@gmail.com",
-      password: "niraj",
+      name: "Anshul Official",
+      email: "anshul.patel321@gmail.com",
+      password: "anshul",
       role: "admin", // admin = ground owner
     };
 

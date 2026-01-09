@@ -446,25 +446,31 @@ exports.deleteGroundImage = async (req, res) => {
  * GET ALL GROUNDS (PUBLIC)
  * GET /api/grounds
  */
+
 exports.getPublicGrounds = async (req, res) => {
   try {
-    // const { search } = req.query;
+    const { search } = req.query;
+
+    const where = {
+      isBlocked: false,
+    };
+
+    if (search) {
+      where[Op.or] = [
+        { name: { [Op.like]: `%${search}%` } }, // ground name
+        { area: { [Op.like]: `%${search}%` } }, // area
+        { "$Country.name$": { [Op.like]: `%${search}%` } }, // country
+        { "$State.name$": { [Op.like]: `%${search}%` } }, // state
+        { "$City.name$": { [Op.like]: `%${search}%` } }, // city
+      ];
+    }
+
     const grounds = await Ground.findAll({
-      where: { isActive: true, isBlocked: false },
+      where,
       include: [
         {
-          model: Country,
-          as: "Country",
-          attributes: ["id", "name"],
-        },
-        {
-          model: State,
-          as: "State",
-          attributes: ["id", "name"],
-        },
-        {
-          model: City,
-          as: "City",
+          model: Amenity,
+          as: "amenities",
           attributes: ["id", "name"],
         },
         {
@@ -474,15 +480,30 @@ exports.getPublicGrounds = async (req, res) => {
           required: false,
         },
         {
-          model: Amenity,
-          as: "amenities",
-          attributes: ["id", "name"],
-        },
-        {
           model: Slot,
           as: "Slots",
+          required: false,
+        },
+        {
+          model: Country,
+          as: "Country",
+          attributes: ["name"],
+          required: false,
+        },
+        {
+          model: State,
+          as: "State",
+          attributes: ["name"],
+          required: false,
+        },
+        {
+          model: City,
+          as: "City",
+          attributes: ["name"],
+          required: false,
         },
       ],
+      distinct: true,
       order: [["createdAt", "DESC"]],
     });
 
@@ -492,20 +513,21 @@ exports.getPublicGrounds = async (req, res) => {
       pricePerSlot: g.pricePerSlot,
       game: g.game,
       area: g.area,
-      city: g.City.name,
-      state: g.State.name,
-      country: g.Country.name,
+      contactNo: g.contactNo,
+      country: g.Country?.name || null,
+      state: g.State?.name || null,
+      city: g.City?.name || null,
       openingTime: to12Hour(g.openingTime),
       closingTime: to12Hour(g.closingTime),
       isBlocked: g.isBlocked,
-      amenities: g.amenities,
+      amenities: g.amenities || [],
       images: g.images || [],
-      Slots: g.Slots,
+      Slots: g.Slots || [],
     }));
 
-    res.json(formatted);
+    res.status(200).json(formatted);
   } catch (error) {
-    console.error("GET PUBLIC GROUNDS ERROR:", error);
+    console.error("Public grounds search error:", error);
     res.status(500).json({ message: "Failed to fetch grounds" });
   }
 };
