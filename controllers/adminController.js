@@ -39,3 +39,20 @@ exports.loginAdmin = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.getLoggedInAdmin = async (req, res) => {
+  try {
+    const admin = await Admin.findByPk(req.admin.id, {
+      attributes: ["id", "name", "email"],
+    });
+
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    res.status(200).json(admin);
+  } catch (error) {
+    console.error("Get admin profile error:", error);
+    res.status(500).json({ message: "Failed to fetch admin profile" });
+  }
+};

@@ -153,6 +153,7 @@ exports.getAdminGrounds = async (req, res) => {
       closingTime: to12Hour(g.closingTime),
       isActive: g.isActive,
       createdAt: g.createdAt,
+      isBlocked: g.isBlocked,
       images: g.images,
       Slots: g.Slots,
       amenities: g.amenities,
@@ -447,8 +448,9 @@ exports.deleteGroundImage = async (req, res) => {
  */
 exports.getPublicGrounds = async (req, res) => {
   try {
+    // const { search } = req.query;
     const grounds = await Ground.findAll({
-      where: { isActive: true },
+      where: { isActive: true, isBlocked: false },
       include: [
         {
           model: Country,
@@ -495,6 +497,7 @@ exports.getPublicGrounds = async (req, res) => {
       country: g.Country.name,
       openingTime: to12Hour(g.openingTime),
       closingTime: to12Hour(g.closingTime),
+      isBlocked: g.isBlocked,
       amenities: g.amenities,
       images: g.images || [],
       Slots: g.Slots,

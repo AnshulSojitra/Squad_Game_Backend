@@ -1,5 +1,21 @@
-const { User, Admin, Booking, Ground, Slot } = require("../models");
+const { User, Admin, Booking, Ground, Slot, SuperAdmin } = require("../models");
 
+exports.getLoggedInSuperAdmin = async (req, res) => {
+  try {
+    const superAdmin = await SuperAdmin.findByPk(req.superAdmin.id, {
+      attributes: ["id", "name", "email"],
+    });
+
+    if (!superAdmin) {
+      return res.status(404).json({ message: "Super Admin not found" });
+    }
+
+    res.status(200).json(superAdmin);
+  } catch (error) {
+    console.error("Get super admin profile error:", error);
+    res.status(500).json({ message: "Failed to fetch super admin profile" });
+  }
+};
 //USER METHODS
 
 exports.getAllUsers = async (req, res) => {
@@ -222,5 +238,55 @@ exports.completeBooking = async (req, res) => {
   } catch (error) {
     console.error("Complete booking error:", error);
     res.status(500).json({ message: "Failed to complete booking" });
+  }
+};
+
+//GROUND METHODS
+
+exports.getAllGrounds = async (req, res) => {
+  try {
+    const grounds = await Ground.findAll({
+      order: [["createdAt", "DESC"]],
+      include: [
+        {
+          model: Admin,
+          attributes: ["id", "name", "email"],
+        },
+      ],
+    });
+
+    res.status(200).json({
+      count: grounds.length,
+      grounds,
+    });
+  } catch (error) {
+    console.error("Get all grounds error:", error);
+    res.status(500).json({ message: "Failed to fetch grounds" });
+  }
+};
+
+exports.toggleGroundBlock = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const ground = await Ground.findByPk(id);
+
+    if (!ground) {
+      return res.status(404).json({ message: "Ground not found" });
+    }
+
+    ground.isBlocked = !ground.isBlocked;
+    await ground.save();
+
+    res.status(200).json({
+      message: `Ground ${
+        ground.isBlocked ? "blocked" : "unblocked"
+      } successfully`,
+      groundId: ground.id,
+      isBlocked: ground.isBlocked,
+    });
+  } catch (error) {
+    console.error("Toggle ground block error:", error);
+    res.status(500).json({ message: "Failed to update ground status" });
   }
 };

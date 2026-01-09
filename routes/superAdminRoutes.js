@@ -13,9 +13,13 @@ const {
   getAllBookings,
   cancelBooking,
   completeBooking,
+  getAllGrounds,
+  toggleGroundBlock,
+  getLoggedInSuperAdmin,
 } = require("../controllers/superAdminController");
 const { loginSuperAdmin } = require("../controllers/superAdminAuthController");
 
+router.get("/me", superAdminAuth, getLoggedInSuperAdmin);
 //LOGIN ROUTE
 router.post("/login", loginSuperAdmin);
 
@@ -28,6 +32,10 @@ router.patch("/user/block/:id", superAdminAuth, toggleUserBlock);
 router.get("/admins", superAdminAuth, getAllAdmins);
 router.get("/admin/:id", superAdminAuth, getAdminById);
 router.patch("/admin/block/:id", superAdminAuth, toggleAdminBlock);
+
+//GROUND ROUTES
+router.get("/grounds", superAdminAuth, getAllGrounds);
+router.patch("/ground/block/:id", superAdminAuth, toggleGroundBlock);
 
 //BOOKING ROUTE
 router.get("/bookings", superAdminAuth, getAllBookings);

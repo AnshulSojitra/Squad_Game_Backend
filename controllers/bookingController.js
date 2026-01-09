@@ -91,10 +91,14 @@ exports.createBooking = async (req, res) => {
         },
         include: {
           model: Ground,
-          attributes: ["pricePerSlot"],
+          attributes: ["pricePerSlot", "isBlocked"],
         },
         transaction: t,
       });
+
+      if (slots.some((slot) => slot.Ground.isBlocked)) {
+        throw new Error("This ground is currently blocked");
+      }
 
       if (slots.length !== slotIds.length) {
         throw new Error("One or more slots are invalid");

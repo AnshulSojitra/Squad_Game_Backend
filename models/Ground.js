@@ -86,11 +86,17 @@ const Ground = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    isBlocked: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
   },
   {
     tableName: "Grounds",
     timestamps: true,
   }
 );
+
+// sequelize.sync({ alter: true });
 
 module.exports = Ground;

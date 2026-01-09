@@ -16,7 +16,10 @@ module.exports = (req, res, next) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    req.admin = decoded;
+    // req.admin = decoded;
+    req.admin = {
+      id: decoded.id,
+    };
     next();
   } catch {
     res.status(401).json({ message: "Invalid token" });
