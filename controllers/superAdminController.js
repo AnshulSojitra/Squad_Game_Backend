@@ -1,4 +1,17 @@
-const { User, Admin, Booking, Ground, Slot, SuperAdmin } = require("../models");
+const {
+  User,
+  Admin,
+  Booking,
+  Ground,
+  Slot,
+  SuperAdmin,
+  Amenity,
+  Country,
+  State,
+  City,
+  GroundImage,
+} = require("../models");
+const { to12Hour } = require("../utils/time");
 
 exports.getLoggedInSuperAdmin = async (req, res) => {
   try {
@@ -77,6 +90,46 @@ exports.toggleUserBlock = async (req, res) => {
   }
 };
 
+exports.getUserBookings = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findByPk(userId, {
+      attributes: ["id", "name", "email"],
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const bookings = await Booking.findAll({
+      where: { userId },
+      include: [
+        {
+          model: Slot,
+          attributes: ["startTime", "endTime"],
+          include: [
+            {
+              model: Ground,
+              attributes: ["id", "name", "city", "state"],
+            },
+          ],
+        },
+      ],
+      order: [["date", "DESC"]],
+    });
+
+    res.json({
+      user,
+      totalBookings: bookings.length,
+      bookings,
+    });
+  } catch (error) {
+    console.error("Get user bookings error:", error);
+    res.status(500).json({ message: "Failed to fetch user bookings" });
+  }
+};
+
 //ADMIN METHODS
 
 exports.getAllAdmins = async (req, res) => {
@@ -136,6 +189,90 @@ exports.toggleAdminBlock = async (req, res) => {
   } catch (error) {
     console.error("Block/Unblock admin error:", error);
     res.status(500).json({ message: "Failed to update admin status" });
+  }
+};
+
+exports.getAdminGrounds = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+
+    //  Check admin exists
+    const admin = await Admin.findByPk(adminId, {
+      attributes: ["id", "name", "email"],
+    });
+
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    //  Fetch grounds owned by admin
+    const grounds = await Ground.findAll({
+      where: { adminId },
+      include: [
+        {
+          model: Country,
+          as: "Country",
+          attributes: ["id", "name"],
+        },
+        {
+          model: State,
+          as: "State",
+          attributes: ["id", "name"],
+        },
+        {
+          model: City,
+          as: "City",
+          attributes: ["id", "name"],
+        },
+        {
+          model: GroundImage,
+          as: "images",
+          attributes: ["imageUrl"],
+          required: false,
+        },
+        {
+          model: Amenity,
+          as: "amenities",
+          attributes: ["id", "name"],
+        },
+        {
+          model: Slot,
+          as: "Slots",
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    const formatted = grounds.map((g) => ({
+      id: g.id,
+      name: g.name,
+      contactNo: g.contactNo,
+      pricePerSlot: g.pricePerSlot,
+      area: g.area,
+      country: g.Country.name,
+      state: g.State.name,
+      city: g.City.name,
+      game: g.game,
+      openingTime: to12Hour(g.openingTime),
+      closingTime: to12Hour(g.closingTime),
+      isActive: g.isActive,
+      createdAt: g.createdAt,
+      isBlocked: g.isBlocked,
+      images: g.images,
+      Slots: g.Slots,
+      amenities: g.amenities,
+    }));
+
+    res.json({
+      admin,
+      totalGrounds: grounds.length,
+      grounds: formatted,
+    });
+  } catch (error) {
+    console.error("Get admin grounds error:", error);
+    res.status(500).json({
+      message: "Failed to fetch admin grounds",
+    });
   }
 };
 
@@ -288,5 +425,47 @@ exports.toggleGroundBlock = async (req, res) => {
   } catch (error) {
     console.error("Toggle ground block error:", error);
     res.status(500).json({ message: "Failed to update ground status" });
+  }
+};
+
+exports.getGroundBookings = async (req, res) => {
+  try {
+    const { groundId } = req.params;
+
+    //  Check ground exists
+    const ground = await Ground.findByPk(groundId, {
+      attributes: ["id", "name"],
+    });
+
+    if (!ground) {
+      return res.status(404).json({ message: "Ground not found" });
+    }
+
+    //  Fetch bookings for this ground
+    const bookings = await Booking.findAll({
+      include: [
+        {
+          model: Slot,
+          where: { groundId },
+          attributes: ["startTime", "endTime"],
+        },
+        {
+          model: User,
+          attributes: ["id", "name", "email"],
+        },
+      ],
+      order: [["date", "DESC"]],
+    });
+
+    res.json({
+      ground,
+      totalBookings: bookings.length,
+      bookings,
+    });
+  } catch (error) {
+    console.error("Get ground bookings error:", error);
+    res.status(500).json({
+      message: "Failed to fetch ground bookings",
+    });
   }
 };
