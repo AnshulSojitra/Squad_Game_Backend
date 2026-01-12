@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { Admin } = require("../models");
+const { Admin, Booking, Slot, Ground } = require("../models");
+const { Op, fn, col } = require("sequelize");
 
 exports.loginAdmin = async (req, res) => {
   try {
@@ -54,5 +55,61 @@ exports.getLoggedInAdmin = async (req, res) => {
   } catch (error) {
     console.error("Get admin profile error:", error);
     res.status(500).json({ message: "Failed to fetch admin profile" });
+  }
+};
+
+exports.getAdminRevenue = async (req, res) => {
+  try {
+    const adminId = req.admin.id;
+
+    const rows = await Booking.findAll({
+      attributes: [
+        [fn("SUM", col("Booking.totalPrice")), "totalRevenue"],
+        [col("Slot.Ground.id"), "groundId"],
+        [col("Slot.Ground.name"), "groundName"],
+      ],
+      where: {
+        status: "confirmed",
+      },
+      include: [
+        {
+          model: Slot,
+          attributes: [],
+          include: [
+            {
+              model: Ground,
+              attributes: [],
+              where: { adminId },
+            },
+          ],
+        },
+      ],
+      group: ["Slot.Ground.id"],
+      raw: true, // 🔥 REQUIRED
+    });
+
+    // ❗ DO NOT access Slot or Ground here
+    let totalRevenue = 0;
+
+    const revenueByGround = rows.map((row) => {
+      const revenue = Number(row.totalRevenue) || 0;
+      totalRevenue += revenue;
+
+      return {
+        groundId: row.groundId,
+        groundName: row.groundName,
+        revenue,
+      };
+    });
+
+    res.json({
+      totalRevenue,
+      revenueByGround,
+    });
+  } catch (error) {
+    console.error("Admin revenue error:", error);
+    res.status(500).json({
+      message: "Failed to fetch revenue",
+    });
   }
 };

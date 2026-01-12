@@ -12,6 +12,7 @@ const {
   GroundImage,
 } = require("../models");
 const { to12Hour } = require("../utils/time");
+const bcrypt = require("bcryptjs");
 
 exports.getLoggedInSuperAdmin = async (req, res) => {
   try {
@@ -131,6 +132,55 @@ exports.getUserBookings = async (req, res) => {
 };
 
 //ADMIN METHODS
+
+exports.createAdmin = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    // 🔍 Basic validation
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        message: "Name, email and password are required",
+      });
+    }
+
+    // 🔍 Check if admin already exists
+    const existingAdmin = await Admin.findOne({
+      where: { email },
+    });
+
+    if (existingAdmin) {
+      return res.status(409).json({
+        message: "Admin with this email already exists",
+      });
+    }
+
+    // 🔐 Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // ✅ Create admin
+    const admin = await Admin.create({
+      name,
+      email,
+      password: hashedPassword,
+      isBlocked: false,
+    });
+
+    res.status(201).json({
+      message: "Admin created successfully",
+      admin: {
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+      },
+    });
+  } catch (error) {
+    console.error("Create admin error:", error);
+    res.status(500).json({
+      message: "Failed to create admin",
+    });
+  }
+};
 
 exports.getAllAdmins = async (req, res) => {
   try {
@@ -389,12 +439,62 @@ exports.getAllGrounds = async (req, res) => {
           model: Admin,
           attributes: ["id", "name", "email"],
         },
+        {
+          model: Country,
+          as: "Country",
+          attributes: ["id", "name"],
+        },
+        {
+          model: State,
+          as: "State",
+          attributes: ["id", "name"],
+        },
+        {
+          model: City,
+          as: "City",
+          attributes: ["id", "name"],
+        },
+        {
+          model: GroundImage,
+          as: "images",
+          attributes: ["imageUrl"],
+          required: false,
+        },
+        {
+          model: Amenity,
+          as: "amenities",
+          attributes: ["id", "name"],
+        },
+        {
+          model: Slot,
+          as: "Slots",
+        },
       ],
     });
 
+    const formatted = grounds.map((g) => ({
+      id: g.id,
+      name: g.name,
+      contactNo: g.contactNo,
+      pricePerSlot: g.pricePerSlot,
+      area: g.area,
+      country: g.Country.name,
+      state: g.State.name,
+      city: g.City.name,
+      game: g.game,
+      openingTime: to12Hour(g.openingTime),
+      closingTime: to12Hour(g.closingTime),
+      isActive: g.isActive,
+      createdAt: g.createdAt,
+      isBlocked: g.isBlocked,
+      images: g.images,
+      Slots: g.Slots,
+      amenities: g.amenities,
+    }));
+
     res.status(200).json({
       count: grounds.length,
-      grounds,
+      grounds: formatted,
     });
   } catch (error) {
     console.error("Get all grounds error:", error);

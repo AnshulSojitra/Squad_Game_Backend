@@ -19,6 +19,7 @@ const {
   getUserBookings,
   getAdminGrounds,
   getGroundBookings,
+  createAdmin,
 } = require("../controllers/superAdminController");
 const { loginSuperAdmin } = require("../controllers/superAdminAuthController");
 
@@ -39,6 +40,7 @@ router.get("/admins", superAdminAuth, getAllAdmins);
 router.get("/admin/:id", superAdminAuth, getAdminById);
 router.patch("/admin/block/:id", superAdminAuth, toggleAdminBlock);
 router.get("/admins/:adminId/grounds", superAdminAuth, getAdminGrounds);
+router.post("/admins", superAdminAuth, createAdmin);
 
 //GROUND ROUTES
 router.get("/grounds", superAdminAuth, getAllGrounds);
