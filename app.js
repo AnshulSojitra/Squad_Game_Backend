@@ -4,14 +4,6 @@ const userRoutes = require("./routes/userRoutes");
 const fs = require("fs");
 const path = require("path");
 
-// Ensure uploads folder exists
-const uploadDir = path.join(__dirname, "uploads");
-
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-  console.log("📁 uploads folder created");
-}
-
 // Routes
 
 const superAdminRoutes = require("./routes/superAdminRoutes");
@@ -22,7 +14,16 @@ const locationRoutes = require("./routes/locationRoutes");
 const publicGroundRoutes = require("./routes/publicGroundRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 const adminBookingRoutes = require("./routes/adminBookingRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
 const autoCompleteBookings = require("./cron/autoCompleteBookings");
+
+// Ensure uploads folder exists
+const uploadDir = path.join(__dirname, "uploads");
+
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+  console.log("📁 uploads folder created");
+}
 
 sequelize
   .sync()
@@ -66,5 +67,7 @@ app.use("/api/location", locationRoutes);
 app.use("/api/bookings", bookingRoutes);
 
 app.use("/api/admin/bookings", adminBookingRoutes);
+
+app.use("/api/payments", paymentRoutes);
 
 module.exports = app;

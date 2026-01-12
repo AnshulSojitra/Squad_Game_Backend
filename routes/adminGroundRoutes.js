@@ -15,32 +15,27 @@ const {
 } = require("../controllers/groundController");
 
 /**
- * @route   POST /api/admin/grounds
- * @desc    Create new ground (Admin only)
+    Create new ground (Admin only)
  */
 router.post("/", adminAuth, upload.array("images", 5), createGround);
 
 /**
- * @route   GET /api/admin/grounds
- * @desc    Get all grounds of logged-in admin
+    Get all grounds of logged-in admin
  */
 router.get("/", adminAuth, getAdminGrounds);
 
 /**
- * @route   GET /api/admin/grounds/:id
- * @desc    Get single ground by id (Admin only)
+   Get single ground by id (Admin only)
  */
 router.get("/:id", adminAuth, getAdminGroundById);
 
 /**
- * @route   PUT /api/admin/grounds/:id
- * @desc    Update ground (Admin only)
+   Update ground (Admin only)
  */
 router.put("/:id", adminAuth, upload.array("images", 5), updateGround);
 
 /**
- * @route   DELETE /api/admin/grounds/:id
- * @desc    Delete ground (Admin only)
+   Delete ground (Admin only)
  */
 router.delete("/:id", adminAuth, deleteGround);
 

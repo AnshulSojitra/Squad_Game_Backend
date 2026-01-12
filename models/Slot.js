@@ -21,4 +21,6 @@ const Slot = sequelize.define("Slot", {
   },
 });
 
+// sequelize.sync({ alter: true });
+
 module.exports = Slot;

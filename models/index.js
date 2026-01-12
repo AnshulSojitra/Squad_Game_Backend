@@ -14,7 +14,7 @@ const City = require("./City");
 const Amenity = require("./Amenity");
 const SuperAdmin = require("./SuperAdmin");
 
-/* ================= RELATIONS ================= */
+/* RELATIONS  */
 
 /**
  * Admin (Ground Owner) → Grounds
@@ -76,12 +76,6 @@ Booking.belongsTo(User, {
   foreignKey: "userId",
 });
 
-// Ground.hasMany(Booking, {
-//   foreignKey: { name: "groundId", allowNull: false },
-//   onDelete: "CASCADE",
-// });
-// Booking.belongsTo(Ground, { foreignKey: "groundId" });
-
 /**
  * Slot → Bookings
  * Each booking is for a specific slot
@@ -127,7 +121,7 @@ Amenity.belongsTo(Ground, {
   foreignKey: "groundId",
 });
 
-/* ================= EXPORT ================= */
+/* EXPORT  */
 
 module.exports = {
   sequelize,

@@ -10,7 +10,6 @@ const Ground = sequelize.define(
       autoIncrement: true,
     },
 
-    // ground name
     name: {
       type: DataTypes.STRING,
       allowNull: false,

@@ -17,130 +17,6 @@ const cancelTemplate = require("../utils/templates/bookingCancellation");
  * CREATE BOOKING
  * POST /api/bookings
  */
-// exports.createBooking = async (req, res) => {
-//   const { slotId, date } = req.body;
-
-//   if (!slotId || !date) {
-//     return res.status(400).json({ message: "Missing required fields" });
-//   }
-
-//   try {
-//     await sequelize.transaction(async (t) => {
-//       // Check if slot exists
-//       const slot = await Slot.findByPk(slotId, {
-//         include: {
-//           model: Ground,
-//           attributes: ["id", "name", "area", "pricePerSlot"],
-//         },
-//         transaction: t,
-//       });
-
-//       if (!slot) {
-//         return res.status(404).json({ message: "Slot not found" });
-//       }
-
-//       // Check if already booked for that date
-//       const alreadyBooked = await Booking.findOne({
-//         where: {
-//           slotId,
-//           date,
-//           status: "CONFIRMED",
-//         },
-//         transaction: t,
-//       });
-
-//       if (alreadyBooked) {
-//         throw new Error("Slot already booked");
-//       }
-
-//       //  Create booking
-//       const booking = await Booking.create(
-//         {
-//           userId: req.user.id,
-//           slotId,
-//           date,
-//           startTime: slot.startTime,
-//           endTime: slot.endTime,
-//           totalPrice: slot.Ground.pricePerSlot,
-//         },
-//         { transaction: t }
-//       );
-//     });
-
-//     res.status(201).json({
-//       message: "Booking confirmed",
-//     });
-//   } catch (error) {
-//     console.error("CREATE BOOKING ERROR:", error.message);
-//     res.status(400).json({ message: error.message });
-//   }
-// };
-
-// exports.createBooking = async (req, res) => {
-//   const { slotIds, date } = req.body;
-
-//   if (!Array.isArray(slotIds) || slotIds.length === 0 || !date) {
-//     return res.status(400).json({
-//       message: "slotIds (array) and date are required",
-//     });
-//   }
-
-//   try {
-//     await sequelize.transaction(async (t) => {
-//       const slots = await Slot.findAll({
-//         where: {
-//           id: { [Op.in]: slotIds },
-//           isActive: true,
-//         },
-//         include: {
-//           model: Ground,
-//           attributes: ["pricePerSlot", "isBlocked"],
-//         },
-//         transaction: t,
-//       });
-
-//       if (slots.some((slot) => slot.Ground.isBlocked)) {
-//         throw new Error("This ground is currently blocked");
-//       }
-
-//       if (slots.length !== slotIds.length) {
-//         throw new Error("One or more slots are invalid");
-//       }
-
-//       const alreadyBooked = await Booking.findAll({
-//         where: {
-//           slotId: { [Op.in]: slotIds },
-//           date,
-//           status: "CONFIRMED",
-//         },
-//         transaction: t,
-//       });
-
-//       if (alreadyBooked.length > 0) {
-//         throw new Error("One or more slots are already booked");
-//       }
-
-//       const bookingsData = slots.map((slot) => ({
-//         userId: req.user.id,
-//         slotId: slot.id,
-//         date,
-//         startTime: slot.startTime,
-//         endTime: slot.endTime,
-//         totalPrice: slot.Ground.pricePerSlot,
-//         status: "CONFIRMED",
-//       }));
-
-//       await Booking.bulkCreate(bookingsData, { transaction: t });
-//     });
-
-//     res.status(201).json({
-//       message: "Booking confirmed",
-//     });
-//   } catch (error) {
-//     console.error("CREATE BOOKING ERROR:", error.message);
-//     res.status(400).json({ message: error.message });
-//   }
-// };
 
 exports.createBooking = async (req, res) => {
   const { slotIds, date } = req.body;
@@ -152,7 +28,7 @@ exports.createBooking = async (req, res) => {
   }
 
   try {
-    let slots; // 🔥 we need this outside transaction
+    let slots;
 
     await sequelize.transaction(async (t) => {
       slots = await Slot.findAll({
@@ -179,7 +55,7 @@ exports.createBooking = async (req, res) => {
         where: {
           slotId: { [Op.in]: slotIds },
           date,
-          status: "confirmed", // ✅ FIXED
+          status: "confirmed",
         },
         transaction: t,
       });
@@ -195,15 +71,14 @@ exports.createBooking = async (req, res) => {
         startTime: slot.startTime,
         endTime: slot.endTime,
         totalPrice: slot.Ground.pricePerSlot,
-        status: "confirmed", // ✅ FIXED
+        status: "confirmed",
       }));
 
       await Booking.bulkCreate(bookingsData, { transaction: t });
     });
 
-    // =========================
     // SEND CONFIRMATION EMAIL
-    // =========================
+
     try {
       const user = await User.findByPk(req.user.id);
 
@@ -244,49 +119,6 @@ exports.createBooking = async (req, res) => {
   }
 };
 
-// exports.cancelBooking = async (req, res) => {
-//   try {
-//     const bookingId = req.params.id;
-//     const userId = req.user.id;
-
-//     const booking = await Booking.findOne({
-//       where: {
-//         id: bookingId,
-//         userId,
-//       },
-//     });
-
-//     if (!booking) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Booking not found",
-//       });
-//     }
-
-//     if (booking.status === "CANCELLED") {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Booking already cancelled",
-//       });
-//     }
-
-//     booking.status = "CANCELLED";
-//     await booking.save();
-
-//     return res.status(200).json({
-//       success: true,
-//       message: "Booking cancelled successfully",
-//       data: booking,
-//     });
-//   } catch (error) {
-//     console.error("CANCEL BOOKING ERROR:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Something went wrong",
-//     });
-//   }
-// };
-
 exports.cancelBooking = async (req, res) => {
   try {
     const bookingId = req.params.id;
@@ -301,7 +133,7 @@ exports.cancelBooking = async (req, res) => {
       where: {
         id: bookingId,
         status: "confirmed",
-        userId: req.user.id, // 🔐 user can cancel only own booking
+        userId: req.user.id,
       },
       include: [
         {
@@ -320,13 +152,11 @@ exports.cancelBooking = async (req, res) => {
       });
     }
 
-    // ✅ cancel booking
+    // cancel booking
     booking.status = "cancelled";
     await booking.save();
 
-    // =========================
     // SEND CANCELLATION EMAIL
-    // =========================
     try {
       const slotTime = `${booking.Slot.startTime} - ${booking.Slot.endTime}`;
 
@@ -417,31 +247,6 @@ exports.getAdminBookings = async (req, res) => {
       ],
       order: [["createdAt", "DESC"]],
     });
-
-    // const formatted = bookings.map((b) => ({
-    //   bookingId: b.id,
-    //   bookingDate: b.date,
-    //   status: b.status,
-
-    //   user: {
-    //     id: b.User.id,
-    //     name: b.User.name,
-    //     email: b.User.email,
-    //   },
-
-    //   ground: {
-    //     id: b.Slot.Ground.id,
-    //     name: b.Slot.Ground.name,
-    //   },
-
-    //   slot: {
-    //     id: b.Slot.id,
-    //     startTime: b.Slot.startTime,
-    //     endTime: b.Slot.endTime,
-    //   },
-
-    //   createdAt: b.createdAt,
-    // }));
 
     const formatted = bookings.map((b) => ({
       bookingId: b.id,

@@ -31,4 +31,6 @@ const SuperAdmin = sequelize.define(
   }
 );
 
+// sequelize.sync({ alter: true });
+
 module.exports = SuperAdmin;

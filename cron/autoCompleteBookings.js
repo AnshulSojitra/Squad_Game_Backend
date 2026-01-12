@@ -35,10 +35,6 @@ const autoCompleteBookings = () => {
           await booking.save();
         }
       }
-
-      // if (bookings.length > 0) {
-      //   console.log(`✅ Auto-completed ${bookings.length} bookings`);
-      // }
     } catch (error) {
       console.error("❌ Auto-complete cron error:", error.message);
     }

@@ -457,11 +457,11 @@ exports.getPublicGrounds = async (req, res) => {
 
     if (search) {
       where[Op.or] = [
-        { name: { [Op.like]: `%${search}%` } }, // ground name
-        { area: { [Op.like]: `%${search}%` } }, // area
-        { "$Country.name$": { [Op.like]: `%${search}%` } }, // country
-        { "$State.name$": { [Op.like]: `%${search}%` } }, // state
-        { "$City.name$": { [Op.like]: `%${search}%` } }, // city
+        { name: { [Op.like]: `%${search}%` } },
+        { area: { [Op.like]: `%${search}%` } },
+        { "$Country.name$": { [Op.like]: `%${search}%` } },
+        { "$State.name$": { [Op.like]: `%${search}%` } },
+        { "$City.name$": { [Op.like]: `%${search}%` } },
       ];
     }
 
