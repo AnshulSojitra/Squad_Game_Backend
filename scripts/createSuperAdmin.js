@@ -12,8 +12,8 @@ const createAdmin = async () => {
     // Super Admin details
     const superAdminData = {
       name: "Niraj Soni",
-      email: "niraj@superadmin.com",
-      password: "niraj",
+      email: "niraj@superadmin1.com",
+      password: "niraj123",
     };
 
     // Check if super admin already exists

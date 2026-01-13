@@ -44,7 +44,7 @@ exports.loginAdmin = async (req, res) => {
 exports.getLoggedInAdmin = async (req, res) => {
   try {
     const admin = await Admin.findByPk(req.admin.id, {
-      attributes: ["id", "name", "email"],
+      attributes: ["id", "name", "email", "isBlocked"],
     });
 
     if (!admin) {

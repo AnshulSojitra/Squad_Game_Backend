@@ -1,6 +1,6 @@
 const sequelize = require("../config/db");
 
-/* ================= IMPORT MODELS ================= */
+/*  IMPORT MODELS  */
 
 const Admin = require("./Admin");
 const User = require("./User");

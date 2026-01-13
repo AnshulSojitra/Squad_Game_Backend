@@ -10,6 +10,7 @@ const {
   State,
   City,
   GroundImage,
+  sequelize,
 } = require("../models");
 const { to12Hour } = require("../utils/time");
 const bcrypt = require("bcryptjs");
@@ -38,7 +39,7 @@ exports.getAllUsers = async (req, res) => {
       attributes: {
         exclude: ["password"],
       },
-      order: [["createdAt", "DESC"]],
+      order: [["createdAt", "ASC"]],
     });
 
     res.status(200).json({
@@ -137,14 +138,14 @@ exports.createAdmin = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // 🔍 Basic validation
+    // Basic validation
     if (!name || !email || !password) {
       return res.status(400).json({
         message: "Name, email and password are required",
       });
     }
 
-    // 🔍 Check if admin already exists
+    // Check if admin already exists
     const existingAdmin = await Admin.findOne({
       where: { email },
     });
@@ -155,7 +156,7 @@ exports.createAdmin = async (req, res) => {
       });
     }
 
-    // 🔐 Hash password
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // ✅ Create admin
@@ -219,26 +220,65 @@ exports.getAdminById = async (req, res) => {
   }
 };
 
+// exports.toggleAdminBlock = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+
+//     const admin = await Admin.findByPk(id);
+//     if (!admin) {
+//       return res.status(404).json({ message: "Admin not found" });
+//     }
+
+//     admin.isBlocked = !admin.isBlocked;
+//     await admin.save();
+//     res.status(200).json({
+//       message: `Admin ${
+//         admin.isBlocked ? "blocked" : "unblocked"
+//       } successfully`,
+//       admin,
+//     });
+//   } catch (error) {
+//     console.error("Block/Unblock admin error:", error);
+//     res.status(500).json({ message: "Failed to update admin status" });
+//   }
+// };
+
 exports.toggleAdminBlock = async (req, res) => {
+  const { id } = req.params;
+
   try {
-    const { id } = req.params;
+    await sequelize.transaction(async (t) => {
+      const admin = await Admin.findByPk(id, { transaction: t });
 
-    const admin = await Admin.findByPk(id);
-    if (!admin) {
-      return res.status(404).json({ message: "Admin not found" });
-    }
+      if (!admin) {
+        throw new Error("Admin not found");
+      }
 
-    admin.isBlocked = !admin.isBlocked;
-    await admin.save();
-    res.status(200).json({
-      message: `Admin ${
-        admin.isBlocked ? "blocked" : "unblocked"
-      } successfully`,
-      admin,
+      // Toggle admin status
+      admin.isBlocked = !admin.isBlocked;
+      await admin.save({ transaction: t });
+
+      // 🔁 Sync all grounds with admin status
+      await Ground.update(
+        { isBlocked: admin.isBlocked },
+        {
+          where: { adminId: admin.id },
+          transaction: t,
+        }
+      );
+
+      res.status(200).json({
+        message: `Admin and all associated grounds ${
+          admin.isBlocked ? "blocked" : "unblocked"
+        } successfully`,
+        admin,
+      });
     });
   } catch (error) {
-    console.error("Block/Unblock admin error:", error);
-    res.status(500).json({ message: "Failed to update admin status" });
+    console.error("Block/Unblock admin error:", error.message);
+    res.status(500).json({
+      message: error.message || "Failed to update admin status",
+    });
   }
 };
 

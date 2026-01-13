@@ -13,7 +13,6 @@ const transporter = nodemailer.createTransport({
 const sendEmail = async ({ to, subject, html }) => {
   console.log("📧 Sending email to:", to);
 
-  // 🔥 FIX: store result in `info`
   const info = await transporter.sendMail({
     from: process.env.EMAIL_FROM,
     to,

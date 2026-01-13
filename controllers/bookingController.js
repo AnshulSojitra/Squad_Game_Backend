@@ -182,6 +182,8 @@ exports.cancelBooking = async (req, res) => {
 };
 
 exports.cancelMultipleBookings = async (req, res) => {
+  console.log("❌ CANCEL CONTROLLER HIT");
+
   const { bookingIds } = req.body;
 
   if (!Array.isArray(bookingIds) || bookingIds.length === 0) {
@@ -323,10 +325,7 @@ exports.getMyBookings = async (req, res) => {
           ],
         },
       ],
-      order: [
-        ["date", "DESC"],
-        ["startTime", "ASC"],
-      ],
+      order: [["status"], ["date", "DESC"], ["startTime", "ASC"]],
     });
 
     const formatted = bookings.map((b) => ({

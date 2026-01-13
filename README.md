@@ -14,7 +14,6 @@ The system supports **users**, **ground owners (admins)**, and a **super admin**
   - User
   - Admin (Ground Owner)
   - Super Admin
-- Block / unblock users, admins, and grounds
 
 ---
 
@@ -22,7 +21,6 @@ The system supports **users**, **ground owners (admins)**, and a **super admin**
 
 - Admins can create and manage grounds
 - Slot-based booking system
-- Amenity management per ground
 - Grounds can be blocked/unblocked by Super Admin
 
 ---
@@ -36,14 +34,6 @@ The system supports **users**, **ground owners (admins)**, and a **super admin**
   - `completed`
   - `cancelled`
 - Booking cancellation support
-
----
-
-### 💳 Payments
-
-- Razorpay payment integration
-- Order creation and payment verification
-- Bookings confirmed only after payment verification
 
 ---
 

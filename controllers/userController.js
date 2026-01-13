@@ -42,11 +42,11 @@ exports.loginUser = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    if (user.isBlocked) {
-      return res.status(403).json({
-        message: "Your account has been blocked. Please contact support.",
-      });
-    }
+    // if (user.isBlocked) {
+    //   return res.status(403).json({
+    //     message: "Your account has been blocked. Please contact support.",
+    //   });
+    // }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -75,7 +75,7 @@ exports.loginUser = async (req, res) => {
 exports.getLoggedInUser = async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      attributes: ["id", "name", "email"],
+      attributes: ["id", "name", "email", "isBlocked"],
     });
 
     if (!user) {
