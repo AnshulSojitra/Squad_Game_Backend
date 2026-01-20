@@ -9,4 +9,10 @@ router.get("/me", adminAuth, adminController.getLoggedInAdmin);
 
 router.get("/revenue", adminAuth, adminController.getAdminRevenue);
 
+router.put("/change-password", adminAuth, adminController.changePassword);
+
+router.post("/forgot-password", adminController.forgotPassword);
+
+router.post("/reset-password", adminController.resetPassword);
+
 module.exports = router;

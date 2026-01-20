@@ -15,10 +15,6 @@ const Slot = sequelize.define("Slot", {
     type: DataTypes.TIME,
     allowNull: false,
   },
-  isActive: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true,
-  },
 });
 
 // sequelize.sync({ alter: true });

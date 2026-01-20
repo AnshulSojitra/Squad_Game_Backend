@@ -34,7 +34,6 @@ exports.createBooking = async (req, res) => {
       slots = await Slot.findAll({
         where: {
           id: { [Op.in]: slotIds },
-          isActive: true,
         },
         include: {
           model: Ground,
@@ -85,12 +84,12 @@ exports.createBooking = async (req, res) => {
       slots.sort((a, b) => a.startTime.localeCompare(b.startTime));
 
       const slotTimes = slots.map(
-        (slot) => `${slot.startTime} - ${slot.endTime}`
+        (slot) => `${slot.startTime} - ${slot.endTime}`,
       );
 
       const totalPrice = slots.reduce(
         (sum, slot) => sum + slot.Ground.pricePerSlot,
-        0
+        0,
       );
 
       await sendEmail({
@@ -201,7 +200,7 @@ exports.cancelMultipleBookings = async (req, res) => {
           userId: req.user.id,
           status: "CONFIRMED",
         },
-      }
+      },
     );
 
     if (result[0] === 0) {
@@ -444,7 +443,6 @@ exports.getGroundAvailability = async (req, res) => {
     const slots = await Slot.findAll({
       where: {
         groundId,
-        isActive: true,
       },
       attributes: ["id", "startTime", "endTime"],
       order: [["startTime", "ASC"]],

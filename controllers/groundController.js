@@ -13,9 +13,9 @@ const fs = require("fs");
 const path = require("path");
 const { to12Hour, to24Hours } = require("../utils/time");
 
-/* ======================================================
+/* 
    ADMIN CONTROLLERS
-====================================================== */
+ */
 
 /**
  * CREATE GROUND
@@ -54,7 +54,6 @@ exports.createGround = async (req, res) => {
       openingTime: req.body.openingTime,
       closingTime: req.body.closingTime,
       adminId: req.admin.id,
-      isActive: true,
     });
 
     // Save images
@@ -80,7 +79,6 @@ exports.createGround = async (req, res) => {
         groundId: ground.id,
         startTime: s.start,
         endTime: s.end,
-        isActive: true,
       }));
       await Slot.bulkCreate(slotRows);
     }
@@ -151,7 +149,6 @@ exports.getAdminGrounds = async (req, res) => {
       game: g.game,
       openingTime: to12Hour(g.openingTime),
       closingTime: to12Hour(g.closingTime),
-      isActive: g.isActive,
       createdAt: g.createdAt,
       isBlocked: g.isBlocked,
       images: g.images,
@@ -541,7 +538,7 @@ exports.getPublicGroundById = async (req, res) => {
     const ground = await Ground.findOne({
       where: {
         id: req.params.id,
-        isActive: true,
+        isBlocked: false,
       },
       include: [
         {
@@ -557,7 +554,6 @@ exports.getPublicGroundById = async (req, res) => {
           model: Slot,
           as: "Slots",
           attributes: ["id", "startTime", "endTime"],
-          where: { isActive: true },
           required: false,
         },
         {
@@ -586,6 +582,7 @@ exports.getPublicGroundById = async (req, res) => {
       id: ground.id,
       name: ground.name,
       pricePerSlot: ground.pricePerSlot,
+      contactNo: ground.contactNo,
       game: ground.game,
       area: ground.area,
       city: ground.City.name,

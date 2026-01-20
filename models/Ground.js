@@ -66,12 +66,6 @@ const Ground = sequelize.define(
       field: "closingTime",
     },
 
-    isActive: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: true,
-      field: "isActive",
-    },
-
     cityId: {
       type: DataTypes.BIGINT,
       field: "cityId",
@@ -93,7 +87,7 @@ const Ground = sequelize.define(
   {
     tableName: "Grounds",
     timestamps: true,
-  }
+  },
 );
 
 // sequelize.sync({ alter: true });

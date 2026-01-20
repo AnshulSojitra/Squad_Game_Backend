@@ -26,6 +26,12 @@ const Admin = sequelize.define("Admin", {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
   },
+  resetPasswordOtp: {
+    type: DataTypes.STRING,
+  },
+  resetPasswordOtpExpires: {
+    type: DataTypes.DATE,
+  },
 });
 
 // sequelize.sync({ alter: true });

@@ -27,7 +27,7 @@ const userAuth = async (req, res, next) => {
     //  Block write operations
     if (user.isBlocked && req.method !== "GET") {
       return res.status(403).json({
-        message: "Your account is blocked. You cannot make bookings.",
+        message: "Your account is blocked. You cannot perform this action.",
       });
     }
 

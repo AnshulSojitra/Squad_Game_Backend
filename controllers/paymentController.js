@@ -22,7 +22,6 @@ exports.createRazorpayOrder = async (req, res) => {
     const slots = await Slot.findAll({
       where: {
         id: { [Op.in]: slotIds },
-        isActive: true,
       },
       include: {
         model: Ground,
@@ -41,7 +40,7 @@ exports.createRazorpayOrder = async (req, res) => {
     // Calculate total amount
     const totalAmount = slots.reduce(
       (sum, slot) => sum + slot.Ground.pricePerSlot,
-      0
+      0,
     );
 
     // Razorpay order
