@@ -14,6 +14,8 @@ const {
 } = require("../models");
 const { to12Hour } = require("../utils/time");
 const bcrypt = require("bcryptjs");
+const adminRegistration = require("../utils/templates/adminRegistration");
+const { sendEmail } = require("../utils/email");
 
 exports.getLoggedInSuperAdmin = async (req, res) => {
   try {
@@ -138,7 +140,7 @@ exports.createAdmin = async (req, res) => {
   try {
     const { name, email, phoneNumber, password } = req.body;
 
-    // Basic validation
+    // validation
     if (!name || !email || !password) {
       return res.status(400).json({
         message: "Name, email and password are required",
@@ -167,6 +169,21 @@ exports.createAdmin = async (req, res) => {
       phoneNumber,
       isBlocked: false,
     });
+
+    try {
+      const admin = await Admin.findOne({ where: { email } });
+      await sendEmail({
+        to: admin.email,
+        subject: "Your Admin Account is Created 🎉",
+        html: adminRegistration({
+          adminName: admin.name,
+          adminEmail: admin.email,
+          adminPhone: admin.phoneNumber,
+        }),
+      });
+    } catch (emailError) {
+      console.error("BOOKING EMAIL FAILED:", emailError.message);
+    }
 
     res.status(201).json({
       message: "Admin created successfully",

@@ -2,6 +2,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Admin, Booking, Slot, Ground } = require("../models");
 const { Op, fn, col } = require("sequelize");
+const adminLogin = require("../utils/templates/adminLogin");
+const { sendEmail } = require("../utils/email");
 
 exports.loginAdmin = async (req, res) => {
   try {
@@ -27,6 +29,20 @@ exports.loginAdmin = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "7d" },
     );
+
+    try {
+      const admin = await Admin.findOne({ where: { email } });
+      await sendEmail({
+        to: admin.email,
+        subject: "Your Admin Account has been successfully logged in 🎉",
+        html: adminLogin({
+          adminName: admin.name,
+          adminEmail: admin.email,
+        }),
+      });
+    } catch (emailError) {
+      console.error("BOOKING EMAIL FAILED:", emailError.message);
+    }
 
     res.json({
       token,
