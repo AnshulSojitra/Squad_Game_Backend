@@ -25,7 +25,7 @@ exports.loginAdmin = async (req, res) => {
     const token = jwt.sign(
       { id: admin.id, role: "admin" },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     res.json({
@@ -34,6 +34,7 @@ exports.loginAdmin = async (req, res) => {
         id: admin.id,
         name: admin.name,
         email: admin.email,
+        phoneNumber: admin.phoneNumber,
       },
     });
   } catch (error) {
@@ -44,7 +45,7 @@ exports.loginAdmin = async (req, res) => {
 exports.getLoggedInAdmin = async (req, res) => {
   try {
     const admin = await Admin.findByPk(req.admin.id, {
-      attributes: ["id", "name", "email", "isBlocked"],
+      attributes: ["id", "name", "email", "phoneNumber", "isBlocked"],
     });
 
     if (!admin) {

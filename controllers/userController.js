@@ -1,10 +1,14 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { User } = require("../models");
+// const { use } = require("react");
+const userRegistration = require("../utils/templates/userRegistration");
+const { sendEmail } = require("../utils/email");
+const userLogin = require("../utils/templates/userLogin");
 
 exports.registerUser = async (req, res) => {
   try {
-    const { name, email, phone, password } = req.body;
+    const { name, email, phoneNumber, password } = req.body;
 
     const existing = await User.findOne({ where: { email } });
     if (existing) {
@@ -16,9 +20,26 @@ exports.registerUser = async (req, res) => {
     const user = await User.create({
       name,
       email,
-      phone,
+      phoneNumber,
       password: hashedPassword,
     });
+
+    // Send welcome email
+
+    try {
+      const user = await User.findOne({ where: { email } });
+      await sendEmail({
+        to: user.email,
+        subject: "Your Account is Created 🎉",
+        html: userRegistration({
+          userName: user.name,
+          userEmail: user.email,
+          userPhone: user.phoneNumber,
+        }),
+      });
+    } catch (emailError) {
+      console.error("BOOKING EMAIL FAILED:", emailError.message);
+    }
 
     res.status(201).json({
       message: "User registered successfully",
@@ -42,12 +63,6 @@ exports.loginUser = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // if (user.isBlocked) {
-    //   return res.status(403).json({
-    //     message: "Your account has been blocked. Please contact support.",
-    //   });
-    // }
-
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
@@ -56,8 +71,24 @@ exports.loginUser = async (req, res) => {
     const token = jwt.sign(
       { id: user.id, role: "user" },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
+
+    //Send login email
+
+    try {
+      const user = await User.findOne({ where: { email } });
+      await sendEmail({
+        to: user.email,
+        subject: "Login Successful 🎉",
+        html: userLogin({
+          userName: user.name,
+          userEmail: user.email,
+        }),
+      });
+    } catch (emailError) {
+      console.error("BOOKING EMAIL FAILED:", emailError.message);
+    }
 
     res.json({
       token,

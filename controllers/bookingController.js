@@ -325,7 +325,7 @@ exports.getMyBookings = async (req, res) => {
           ],
         },
       ],
-      order: [["status"], ["date", "DESC"], ["startTime", "ASC"]],
+      order: [["status"], ["date", "ASC"], ["startTime", "ASC"]],
     });
 
     const formatted = bookings.map((b) => ({

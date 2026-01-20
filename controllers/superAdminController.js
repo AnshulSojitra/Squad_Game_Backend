@@ -136,7 +136,7 @@ exports.getUserBookings = async (req, res) => {
 
 exports.createAdmin = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, phoneNumber, password } = req.body;
 
     // Basic validation
     if (!name || !email || !password) {
@@ -159,11 +159,12 @@ exports.createAdmin = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // ✅ Create admin
+    //  Create admin
     const admin = await Admin.create({
       name,
       email,
       password: hashedPassword,
+      phoneNumber,
       isBlocked: false,
     });
 
@@ -173,6 +174,7 @@ exports.createAdmin = async (req, res) => {
         id: admin.id,
         name: admin.name,
         email: admin.email,
+        phoneNumber: admin.phoneNumber,
       },
     });
   } catch (error) {
@@ -220,29 +222,6 @@ exports.getAdminById = async (req, res) => {
   }
 };
 
-// exports.toggleAdminBlock = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-
-//     const admin = await Admin.findByPk(id);
-//     if (!admin) {
-//       return res.status(404).json({ message: "Admin not found" });
-//     }
-
-//     admin.isBlocked = !admin.isBlocked;
-//     await admin.save();
-//     res.status(200).json({
-//       message: `Admin ${
-//         admin.isBlocked ? "blocked" : "unblocked"
-//       } successfully`,
-//       admin,
-//     });
-//   } catch (error) {
-//     console.error("Block/Unblock admin error:", error);
-//     res.status(500).json({ message: "Failed to update admin status" });
-//   }
-// };
-
 exports.toggleAdminBlock = async (req, res) => {
   const { id } = req.params;
 
@@ -264,7 +243,7 @@ exports.toggleAdminBlock = async (req, res) => {
         {
           where: { adminId: admin.id },
           transaction: t,
-        }
+        },
       );
 
       res.status(200).json({
@@ -477,7 +456,7 @@ exports.getAllGrounds = async (req, res) => {
       include: [
         {
           model: Admin,
-          attributes: ["id", "name", "email"],
+          attributes: ["id", "name", "phoneNumber", "email"],
         },
         {
           model: Country,
@@ -530,6 +509,12 @@ exports.getAllGrounds = async (req, res) => {
       images: g.images,
       Slots: g.Slots,
       amenities: g.amenities,
+      admin: {
+        id: g.Admin.id,
+        name: g.Admin.name,
+        phoneNumber: g.Admin.phoneNumber,
+        email: g.Admin.email,
+      },
     }));
 
     res.status(200).json({

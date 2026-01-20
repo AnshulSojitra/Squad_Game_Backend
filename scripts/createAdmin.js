@@ -9,12 +9,13 @@ const createAdmin = async () => {
     await sequelize.authenticate();
     console.log("✅ Database connected");
 
-    // Admin (Ground Owner) details
+    // Admin details
     const adminData = {
       name: "Anshul Official",
       email: "anshul.patel321@gmail.com",
+      phoneNumber: "1234567890",
       password: "anshul",
-      role: "admin", // admin = ground owner
+      role: "admin",
     };
 
     // Check if admin already exists
@@ -27,6 +28,11 @@ const createAdmin = async () => {
       process.exit(0);
     }
 
+    if (adminData.phoneNumber && !/^[0-9]{10}$/.test(adminData.phoneNumber)) {
+      console.log("❌ Invalid phone number");
+      process.exit(1);
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(adminData.password, 10);
 
@@ -36,6 +42,7 @@ const createAdmin = async () => {
       email: adminData.email,
       password: hashedPassword,
       role: adminData.role,
+      phoneNumber: adminData.phoneNumber,
     });
 
     console.log("🎉 Admin (Ground Owner) created successfully");

@@ -13,6 +13,11 @@ const Admin = sequelize.define("Admin", {
     unique: true,
   },
   password: DataTypes.STRING,
+  phoneNumber: {
+    type: DataTypes.STRING(15),
+    allowNull: true,
+  },
+
   role: {
     type: DataTypes.STRING,
     defaultValue: "admin",
