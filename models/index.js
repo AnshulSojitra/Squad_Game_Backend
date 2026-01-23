@@ -13,6 +13,7 @@ const State = require("./State");
 const City = require("./City");
 const Amenity = require("./Amenity");
 const SuperAdmin = require("./SuperAdmin");
+const Review = require("./Review");
 
 /* RELATIONS  */
 
@@ -76,6 +77,14 @@ Booking.belongsTo(User, {
   foreignKey: "userId",
 });
 
+// User → Reviews
+User.hasMany(Review, { foreignKey: "userId", onDelete: "CASCADE" });
+Review.belongsTo(User, { foreignKey: "userId" });
+
+// Ground → Reviews
+Ground.hasMany(Review, { foreignKey: "groundId", onDelete: "CASCADE" });
+Review.belongsTo(Ground, { foreignKey: "groundId" });
+
 /**
  * Slot → Bookings
  * Each booking is for a specific slot
@@ -136,4 +145,5 @@ module.exports = {
   City,
   Amenity,
   SuperAdmin,
+  Review,
 };

@@ -8,6 +8,8 @@ const {
   State,
   City,
   Amenity,
+  Review,
+  User,
 } = require("../models");
 const fs = require("fs");
 const path = require("path");
@@ -439,9 +441,9 @@ exports.deleteGroundImage = async (req, res) => {
   }
 };
 
-/* ======================================================
+/* 
    PUBLIC CONTROLLERS
-====================================================== */
+*/
 
 /**
  * GET ALL GROUNDS (PUBLIC)
@@ -656,4 +658,26 @@ exports.getSlotAvailability = async (req, res) => {
     console.error("SLOT AVAILABILITY ERROR:", error);
     res.status(500).json({ message: "Failed to fetch slot availability" });
   }
+};
+
+exports.getGroundReviews = async (req, res) => {
+  const { groundId } = req.params;
+
+  const reviews = await Review.findAll({
+    where: { groundId },
+    include: {
+      model: User,
+      attributes: ["id", "name"],
+    },
+    order: [["createdAt", "DESC"]],
+  });
+
+  const avgRating =
+    reviews.reduce((sum, r) => sum + r.rating, 0) / (reviews.length || 1);
+
+  res.json({
+    avgRating: Number(avgRating.toFixed(1)),
+    totalReviews: reviews.length,
+    reviews,
+  });
 };

@@ -15,6 +15,7 @@ const publicGroundRoutes = require("./routes/publicGroundRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 const adminBookingRoutes = require("./routes/adminBookingRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
+const reviewRoutes = require("./routes/reviewRoutes");
 const autoCompleteBookings = require("./cron/autoCompleteBookings");
 
 // Ensure uploads folder exists
@@ -67,6 +68,8 @@ app.use("/api/location", locationRoutes);
 app.use("/api/bookings", bookingRoutes);
 
 app.use("/api/admin/bookings", adminBookingRoutes);
+
+app.use("/api", reviewRoutes);
 
 app.use("/api/payments", paymentRoutes);
 

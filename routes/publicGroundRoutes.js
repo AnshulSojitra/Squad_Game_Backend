@@ -5,6 +5,7 @@ const {
   getPublicGrounds,
   getPublicGroundById,
   getSlotAvailability,
+  getGroundReviews,
 } = require("../controllers/groundController");
 
 // GET all grounds (public)
@@ -17,5 +18,7 @@ router.get("/:id", getPublicGroundById);
 router.get("/:groundId/slots", getSlotAvailability);
 
 router.get("/:groundId/availability", bookingController.getGroundAvailability);
+
+router.get("/:groundId/reviews", getGroundReviews);
 
 module.exports = router;
