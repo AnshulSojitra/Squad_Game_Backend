@@ -47,6 +47,10 @@ const Ground = sequelize.define(
       type: DataTypes.STRING,
       field: "city",
     },
+    locationUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
 
     game: {
       type: DataTypes.STRING,
@@ -65,7 +69,11 @@ const Ground = sequelize.define(
       allowNull: false,
       field: "closingTime",
     },
-
+    advanceBookingDays: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 7,
+    },
     cityId: {
       type: DataTypes.BIGINT,
       field: "cityId",

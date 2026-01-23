@@ -1,4 +1,3 @@
-// routes/superAdminRoutes.js
 const express = require("express");
 const router = express.Router();
 const superAdminAuth = require("../middleware/superAdminAuth");
@@ -20,6 +19,8 @@ const {
   getAdminGrounds,
   getGroundBookings,
   createAdmin,
+  deleteGround,
+  deleteAdmin,
 } = require("../controllers/superAdminController");
 const { loginSuperAdmin } = require("../controllers/superAdminAuthController");
 
@@ -41,11 +42,13 @@ router.get("/admin/:id", superAdminAuth, getAdminById);
 router.patch("/admin/block/:id", superAdminAuth, toggleAdminBlock);
 router.get("/admins/:adminId/grounds", superAdminAuth, getAdminGrounds);
 router.post("/admins", superAdminAuth, createAdmin);
+router.delete("/admin/:id", superAdminAuth, deleteAdmin);
 
 //GROUND ROUTES
 router.get("/grounds", superAdminAuth, getAllGrounds);
 router.patch("/ground/block/:id", superAdminAuth, toggleGroundBlock);
 router.get("/grounds/:groundId/bookings", superAdminAuth, getGroundBookings);
+router.delete("/ground/:id", superAdminAuth, deleteGround);
 
 //BOOKING ROUTE
 router.get("/bookings", superAdminAuth, getAllBookings);

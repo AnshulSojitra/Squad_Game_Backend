@@ -37,7 +37,12 @@ exports.createBooking = async (req, res) => {
         },
         include: {
           model: Ground,
-          attributes: ["name", "pricePerSlot", "isBlocked"],
+          attributes: [
+            "name",
+            "pricePerSlot",
+            "isBlocked",
+            "advanceBookingDays",
+          ],
         },
         transaction: t,
       });
@@ -48,6 +53,30 @@ exports.createBooking = async (req, res) => {
 
       if (slots.some((slot) => slot.Ground.isBlocked)) {
         throw new Error("This ground is currently blocked");
+      }
+
+      // All slots belong to the same ground
+      const ground = slots[0].Ground;
+
+      // Normalize dates (very important)
+      const bookingDate = new Date(date);
+      const today = new Date();
+
+      bookingDate.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+
+      if (
+        ground.advanceBookingDays !== null &&
+        ground.advanceBookingDays !== undefined
+      ) {
+        const maxAllowedDate = new Date(today);
+        maxAllowedDate.setDate(today.getDate() + ground.advanceBookingDays);
+
+        if (bookingDate > maxAllowedDate) {
+          throw new Error(
+            `You can book this ground only up to ${ground.advanceBookingDays} days in advance`,
+          );
+        }
       }
 
       const alreadyBooked = await Booking.findAll({

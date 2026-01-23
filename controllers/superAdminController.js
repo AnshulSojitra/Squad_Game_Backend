@@ -16,6 +16,9 @@ const { to12Hour } = require("../utils/time");
 const bcrypt = require("bcryptjs");
 const adminRegistration = require("../utils/templates/adminRegistration");
 const { sendEmail } = require("../utils/email");
+const path = require("path");
+const fs = require("fs");
+const e = require("express");
 
 exports.getLoggedInSuperAdmin = async (req, res) => {
   try {
@@ -338,6 +341,7 @@ exports.getAdminGrounds = async (req, res) => {
       country: g.Country.name,
       state: g.State.name,
       city: g.City.name,
+      locationUrl: g.locationUrl,
       game: g.game,
       openingTime: to12Hour(g.openingTime),
       closingTime: to12Hour(g.closingTime),
@@ -357,6 +361,31 @@ exports.getAdminGrounds = async (req, res) => {
     console.error("Get admin grounds error:", error);
     res.status(500).json({
       message: "Failed to fetch admin grounds",
+    });
+  }
+};
+
+exports.deleteAdmin = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await sequelize.transaction(async (t) => {
+      const admin = await Admin.findByPk(id, { transaction: t });
+
+      if (!admin) {
+        throw new Error("Admin not found");
+      }
+
+      await admin.destroy({ transaction: t });
+    });
+
+    res.status(200).json({
+      message: "Admin and all associated data deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete admin error:", error.message);
+    res.status(400).json({
+      message: error.message || "Failed to delete admin",
     });
   }
 };
@@ -516,6 +545,7 @@ exports.getAllGrounds = async (req, res) => {
       country: g.Country.name,
       state: g.State.name,
       city: g.City.name,
+      locationUrl: g.locationUrl,
       game: g.game,
       openingTime: to12Hour(g.openingTime),
       closingTime: to12Hour(g.closingTime),
@@ -607,5 +637,44 @@ exports.getGroundBookings = async (req, res) => {
     res.status(500).json({
       message: "Failed to fetch ground bookings",
     });
+  }
+};
+
+exports.deleteGround = async (req, res) => {
+  try {
+    const ground = await Ground.findOne({
+      where: {
+        id: req.params.id,
+      },
+      include: {
+        model: GroundImage,
+        as: "images",
+      },
+    });
+
+    if (!ground) {
+      return res
+        .status(404)
+        .json({ message: "Ground not found or access denied" });
+    }
+
+    // DELETE IMAGE FILES FROM UPLOADS
+    if (ground.images && ground.images.length > 0) {
+      ground.images.forEach((img) => {
+        const filePath = path.join(__dirname, "..", img.imageUrl);
+
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      });
+    }
+
+    //DELETE DB RECORD
+    await ground.destroy();
+
+    res.json({ message: "Ground and images deleted successfully" });
+  } catch (error) {
+    console.error("DELETE GROUND ERROR:", error);
+    res.status(500).json({ message: "Failed to delete ground" });
   }
 };

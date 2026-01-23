@@ -13,6 +13,7 @@ const {
   updateGround,
   deleteGround,
 } = require("../controllers/groundController");
+const { toggleGroundBlock } = require("../controllers/superAdminController");
 
 /**
     Create new ground (Admin only)
@@ -38,5 +39,7 @@ router.put("/:id", adminAuth, upload.array("images", 5), updateGround);
    Delete ground (Admin only)
  */
 router.delete("/:id", adminAuth, deleteGround);
+
+router.patch("/block/:id", adminAuth, toggleGroundBlock);
 
 module.exports = router;

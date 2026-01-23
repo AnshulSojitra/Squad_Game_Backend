@@ -47,6 +47,8 @@ exports.createGround = async (req, res) => {
       country: req.body.country,
       state: req.body.state,
       city: req.body.city,
+      locationUrl: req.body.locationUrl,
+      advanceBookingDays: req.body.advanceBookingDays,
       cityId: req.body.city,
       stateId: req.body.state,
       countryId: req.body.country,
@@ -146,6 +148,7 @@ exports.getAdminGrounds = async (req, res) => {
       country: g.Country.name,
       state: g.State.name,
       city: g.City.name,
+      locationUrl: g.locationUrl,
       game: g.game,
       openingTime: to12Hour(g.openingTime),
       closingTime: to12Hour(g.closingTime),
@@ -237,12 +240,13 @@ exports.updateGround = async (req, res) => {
       return res.status(404).json({ message: "Ground not found" });
     }
 
-    // 1️⃣ Update ground fields
+    // Update ground fields
     await ground.update({
       name: req.body.groundName,
       contactNo: req.body.contact,
       pricePerSlot: req.body.pricePerHour,
       area: req.body.area,
+      locationUrl: req.body.locationUrl,
       country: req.body.country,
       state: req.body.state,
       city: req.body.city,
@@ -254,7 +258,7 @@ exports.updateGround = async (req, res) => {
       closingTime: req.body.closingTime,
     });
 
-    // 2️⃣ If new images uploaded → replace old ones
+    // If new images uploaded → replace old ones
     if (req.files && req.files.length > 0) {
       //  Delete old image files
       for (const img of ground.images) {
@@ -303,7 +307,7 @@ exports.updateGround = async (req, res) => {
       await Amenity.bulkCreate(amenitiesData);
     }
 
-    // 3️⃣ Update slots
+    // Update slots
 
     let slots = [];
 
@@ -514,6 +518,7 @@ exports.getPublicGrounds = async (req, res) => {
       country: g.Country?.name || null,
       state: g.State?.name || null,
       city: g.City?.name || null,
+      locationUrl: g.locationUrl,
       openingTime: to12Hour(g.openingTime),
       closingTime: to12Hour(g.closingTime),
       isBlocked: g.isBlocked,
@@ -586,6 +591,7 @@ exports.getPublicGroundById = async (req, res) => {
       game: ground.game,
       area: ground.area,
       city: ground.City.name,
+      locationUrl: ground.locationUrl,
       state: ground.State.name,
       country: ground.Country.name,
       openingTime: ground.openingTime,
