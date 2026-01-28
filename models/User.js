@@ -40,6 +40,14 @@ const User = sequelize.define("User", {
   resetPasswordOtpExpires: {
     type: DataTypes.DATE,
   },
+  otp: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  otpExpiresAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
 });
 
 // sequelize.sync({ alter: true });

@@ -1,7 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { User } = require("../models");
-// const { use } = require("react");
 const userRegistration = require("../utils/templates/userRegistration");
 const passwordChange = require("../utils/templates/passwordChange");
 const { sendEmail } = require("../utils/email");

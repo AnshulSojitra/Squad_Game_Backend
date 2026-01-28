@@ -1,3 +1,4 @@
+const he = require("he");
 const { Booking } = require("../models");
 const { Op } = require("sequelize");
 const {
@@ -14,15 +15,12 @@ const {
 const fs = require("fs");
 const path = require("path");
 const { to12Hour, to24Hours } = require("../utils/time");
+const { model } = require("mongoose");
 
-/* 
-   ADMIN CONTROLLERS
- */
+/* ADMIN CONTROLLERS */
 
-/**
- * CREATE GROUND
- * POST /api/admin/grounds
- */
+//* CREATE GROUND
+
 exports.createGround = async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
@@ -49,7 +47,9 @@ exports.createGround = async (req, res) => {
       country: req.body.country,
       state: req.body.state,
       city: req.body.city,
-      locationUrl: req.body.locationUrl,
+      // locationUrl: req.body.locationUrl,
+      latitude: req.body.latitude,
+      longitude: req.body.longitude,
       advanceBookingDays: req.body.advanceBookingDays,
       cityId: req.body.city,
       stateId: req.body.state,
@@ -97,10 +97,7 @@ exports.createGround = async (req, res) => {
   }
 };
 
-/**
- * GET ALL GROUNDS (ADMIN)
- * GET /api/admin/grounds
- */
+// * GET ALL GROUNDS (ADMIN)
 
 exports.getAdminGrounds = async (req, res) => {
   try {
@@ -150,11 +147,12 @@ exports.getAdminGrounds = async (req, res) => {
       country: g.Country.name,
       state: g.State.name,
       city: g.City.name,
-      locationUrl: g.locationUrl,
+      // locationUrl: g.locationUrl,
+      latitude: g.latitude,
+      longitude: g.longitude,
       game: g.game,
       openingTime: to12Hour(g.openingTime),
       closingTime: to12Hour(g.closingTime),
-      createdAt: g.createdAt,
       isBlocked: g.isBlocked,
       images: g.images,
       Slots: g.Slots,
@@ -168,10 +166,7 @@ exports.getAdminGrounds = async (req, res) => {
   }
 };
 
-/**
- * GET SINGLE GROUND (ADMIN - FOR EDIT)
- * GET /api/admin/grounds/:id
- */
+// * GET SINGLE GROUND (ADMIN - FOR EDIT)
 
 exports.getAdminGroundById = async (req, res) => {
   try {
@@ -179,6 +174,9 @@ exports.getAdminGroundById = async (req, res) => {
       where: {
         id: req.params.id,
         adminId: req.admin.id,
+      },
+      attributes: {
+        exclude: ["createdAt", "updatedAt", "countryId", "stateId", "cityId"],
       },
       include: [
         {
@@ -223,10 +221,7 @@ exports.getAdminGroundById = async (req, res) => {
   }
 };
 
-/**
- * UPDATE GROUND (ADMIN)
- * PUT /api/admin/grounds/:id
- */
+//* UPDATE GROUND (ADMIN)
 
 exports.updateGround = async (req, res) => {
   try {
@@ -248,7 +243,9 @@ exports.updateGround = async (req, res) => {
       contactNo: req.body.contact,
       pricePerSlot: req.body.pricePerHour,
       area: req.body.area,
-      locationUrl: req.body.locationUrl,
+      // locationUrl: req.body.locationUrl,
+      latitude: req.body.latitude,
+      longitude: req.body.longitude,
       country: req.body.country,
       state: req.body.state,
       city: req.body.city,
@@ -347,10 +344,7 @@ exports.updateGround = async (req, res) => {
   }
 };
 
-/**
- * DELETE GROUND (ADMIN)
- * DELETE /api/admin/grounds/:id
- */
+//* DELETE GROUND (ADMIN)
 
 exports.deleteGround = async (req, res) => {
   try {
@@ -441,14 +435,9 @@ exports.deleteGroundImage = async (req, res) => {
   }
 };
 
-/* 
-   PUBLIC CONTROLLERS
-*/
+// PUBLIC CONTROLLERS
 
-/**
- * GET ALL GROUNDS (PUBLIC)
- * GET /api/grounds
- */
+//* GET ALL GROUNDS (PUBLIC)
 
 exports.getPublicGrounds = async (req, res) => {
   try {
@@ -485,6 +474,7 @@ exports.getPublicGrounds = async (req, res) => {
         {
           model: Slot,
           as: "Slots",
+          attributes: ["id", "startTime", "endTime"],
           required: false,
         },
         {
@@ -520,7 +510,9 @@ exports.getPublicGrounds = async (req, res) => {
       country: g.Country?.name || null,
       state: g.State?.name || null,
       city: g.City?.name || null,
-      locationUrl: g.locationUrl,
+      // locationUrl: g.locationUrl,
+      latitude: g.latitude,
+      longitude: g.longitude,
       openingTime: to12Hour(g.openingTime),
       closingTime: to12Hour(g.closingTime),
       isBlocked: g.isBlocked,
@@ -536,10 +528,8 @@ exports.getPublicGrounds = async (req, res) => {
   }
 };
 
-/**
- * GET SINGLE GROUND (PUBLIC)
- * GET /api/grounds/:id
- */
+//* GET SINGLE GROUND (PUBLIC)
+
 exports.getPublicGroundById = async (req, res) => {
   try {
     const ground = await Ground.findOne({
@@ -556,6 +546,7 @@ exports.getPublicGroundById = async (req, res) => {
         {
           model: Amenity,
           as: "amenities",
+          attributes: ["id", "name"],
         },
         {
           model: Slot,
@@ -593,7 +584,10 @@ exports.getPublicGroundById = async (req, res) => {
       game: ground.game,
       area: ground.area,
       city: ground.City.name,
-      locationUrl: ground.locationUrl,
+      // locationUrl: ground.locationUrl,
+      advanceBookingDays: ground.advanceBookingDays,
+      latitude: ground.latitude,
+      longitude: ground.longitude,
       state: ground.State.name,
       country: ground.Country.name,
       openingTime: ground.openingTime,
@@ -608,10 +602,8 @@ exports.getPublicGroundById = async (req, res) => {
   }
 };
 
-/**
- * GET SLOT AVAILABILITY (PUBLIC)
- * GET /api/grounds/:groundId/slots?date=YYYY-MM-DD
- */
+// * GET SLOT AVAILABILITY (PUBLIC)
+
 exports.getSlotAvailability = async (req, res) => {
   try {
     const { groundId } = req.params;
@@ -665,10 +657,17 @@ exports.getGroundReviews = async (req, res) => {
 
   const reviews = await Review.findAll({
     where: { groundId },
-    include: {
-      model: User,
-      attributes: ["id", "name"],
-    },
+    attributes: { exclude: ["updatedAt", "createdAt", "userId", "groundId"] },
+    include: [
+      {
+        model: User,
+        attributes: ["id", "name"],
+      },
+      {
+        model: Ground,
+        attributes: ["id", "name"],
+      },
+    ],
     order: [["createdAt", "DESC"]],
   });
 

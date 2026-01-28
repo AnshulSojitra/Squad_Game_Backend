@@ -257,7 +257,7 @@ exports.toggleAdminBlock = async (req, res) => {
       admin.isBlocked = !admin.isBlocked;
       await admin.save({ transaction: t });
 
-      // 🔁 Sync all grounds with admin status
+      //  Sync all grounds with admin status
       await Ground.update(
         { isBlocked: admin.isBlocked },
         {

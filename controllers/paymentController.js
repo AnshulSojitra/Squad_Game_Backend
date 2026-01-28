@@ -45,7 +45,7 @@ exports.createRazorpayOrder = async (req, res) => {
 
     // Razorpay order
     const order = await razorpay.orders.create({
-      amount: totalAmount * 100, // ₹ → paise
+      amount: totalAmount * 100,
       currency: "INR",
       receipt: `rcpt_${Date.now()}`,
       notes: {
@@ -58,7 +58,7 @@ exports.createRazorpayOrder = async (req, res) => {
       orderId: order.id,
       amount: totalAmount,
       currency: "INR",
-      key: process.env.RAZORPAY_KEY_ID, // frontend needs this
+      key: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {
     console.error("Create Razorpay order error:", error);

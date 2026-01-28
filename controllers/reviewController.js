@@ -15,7 +15,7 @@ exports.addReview = async (req, res) => {
       return res.status(404).json({ message: "Ground not found" });
     }
 
-    // ❌ Prevent multiple reviews by same user
+    //  Prevent multiple reviews by same user
     const existingReview = await Review.findOne({
       where: { groundId, userId },
     });

@@ -13,10 +13,7 @@ const { sendEmail } = require("../utils/email");
 const bookingTemplate = require("../utils/templates/bookingConfirmation");
 const cancelTemplate = require("../utils/templates/bookingCancellation");
 
-/**
- * CREATE BOOKING
- * POST /api/bookings
- */
+/*** CREATE BOOKING*/
 
 exports.createBooking = async (req, res) => {
   const { slotIds, date } = req.body;
@@ -261,7 +258,7 @@ exports.getAdminBookings = async (req, res) => {
         {
           model: User,
           required: false,
-          attributes: ["id", "name", "email"],
+          attributes: ["id", "name", "email", "phoneNumber"],
         },
         {
           model: Slot,
@@ -288,6 +285,7 @@ exports.getAdminBookings = async (req, res) => {
             id: b.User.id,
             name: b.User.name,
             email: b.User.email,
+            phoneNumber: b.User.phoneNumber,
           }
         : null,
 
@@ -324,6 +322,7 @@ exports.getMyBookings = async (req, res) => {
       where: {
         userId,
       },
+      attributes: { exclude: ["createdAt"] },
       include: [
         {
           model: Slot,
@@ -406,6 +405,7 @@ exports.getMyBookingById = async (req, res) => {
         id: bookingId,
         userId,
       },
+      attributes: { exclude: ["createdAt"] },
       include: [
         {
           model: Slot,
