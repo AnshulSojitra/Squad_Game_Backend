@@ -6,23 +6,25 @@ const passwordChange = require("../utils/templates/passwordChange");
 const { sendEmail } = require("../utils/email");
 const userLogin = require("../utils/templates/userLogin");
 const { Op } = require("sequelize");
+const { identifyLoginField } = require("../utils/identifyLoginField");
+const { sendSms } = require("../utils/sendSms");
 
 exports.registerUser = async (req, res) => {
   try {
-    const { name, email, phoneNumber, password } = req.body;
+    const { name, email, phoneNumber } = req.body;
 
     const existing = await User.findOne({ where: { email } });
     if (existing) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
       name,
       email,
       phoneNumber,
-      password: hashedPassword,
+      // password: hashedPassword,
     });
 
     // Send welcome email
@@ -57,17 +59,17 @@ exports.registerUser = async (req, res) => {
 
 exports.loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email } = req.body;
 
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
+    // const isMatch = await bcrypt.compare(password, user.password);
+    // if (!isMatch) {
+    //   return res.status(401).json({ message: "Invalid credentials" });
+    // }
 
     const token = jwt.sign(
       { id: user.id, role: "user" },
@@ -185,6 +187,179 @@ exports.changePassword = async (req, res) => {
       message: "Failed to change password",
     });
   }
+};
+
+// exports.sendOtp = async (req, res) => {
+//   const { login } = req.body; // email OR phone
+//   const isNewUser = true;
+//   const parsed = identifyLoginField(login);
+//   if (!parsed) {
+//     return res.status(400).json({ message: "Invalid email or phone number" });
+//   }
+
+//   const otp = Math.floor(100000 + Math.random() * 900000).toString();
+//   const expiry = new Date(Date.now() + 5 * 60 * 1000);
+
+//   let user;
+
+//   if (parsed.type === "email") {
+//     user = await User.findOne({ where: { email: parsed.value } });
+//     if (!user) user = await User.create({ email: parsed.value });
+//   } else {
+//     user = await User.findOne({ where: { phoneNumber: parsed.value } });
+//     if (!user) user = await User.create({ phoneNumber: parsed.value });
+//   }
+
+//   await user.update({ otp, otpExpiresAt: expiry });
+
+//   try {
+//     if (parsed.type === "email") {
+//       await sendEmail({
+//         to: parsed.value,
+//         subject: "Your Box Arena OTP",
+//         html: `<h2>${otp}</h2><p>Valid for 5 minutes</p>`,
+//       });
+//     } else {
+//       await sendSms({
+//         to: `+91${parsed.value}`,
+//         message: `Your Box Arena OTP is ${otp}. Valid for 5 minutes.`,
+//       });
+//     }
+//   } catch (err) {
+//     return res.status(500).json({ message: "Failed to send OTP" });
+//   }
+
+//   res.json({ message: "OTP sent successfully", isNewUser: isNewUser });
+// };
+
+exports.sendOtp = async (req, res) => {
+  const { login } = req.body;
+
+  const parsed = identifyLoginField(login);
+  if (!parsed) {
+    return res.status(400).json({ message: "Invalid email or phone number" });
+  }
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiry = new Date(Date.now() + 5 * 60 * 1000);
+
+  let user;
+  let isNewUser = false;
+
+  if (parsed.type === "email") {
+    user = await User.findOne({ where: { email: parsed.value } });
+
+    if (!user) {
+      user = await User.create({ email: parsed.value });
+      isNewUser = true;
+    }
+  } else {
+    user = await User.findOne({ where: { phoneNumber: parsed.value } });
+
+    if (!user) {
+      user = await User.create({ phoneNumber: parsed.value });
+      isNewUser = true;
+    }
+  }
+
+  await user.update({
+    otp,
+    otpExpiresAt: expiry,
+  });
+
+  // send OTP (email / sms)
+  if (parsed.type === "email") {
+    await sendEmail({
+      to: parsed.value,
+      subject: "Your Box Arena OTP",
+      html: `<h2>${otp}</h2><p>Valid for 5 minutes</p>`,
+    });
+  } else {
+    await sendSms({
+      to: `+91${parsed.value}`,
+      message: `Your Box Arena OTP is ${otp}. Valid for 5 minutes.`,
+    });
+  }
+
+  res.json({
+    message: "OTP sent successfully",
+  });
+};
+
+exports.verifyOtp = async (req, res) => {
+  const { login, otp } = req.body;
+
+  const parsed = identifyLoginField(login);
+  if (!parsed) {
+    return res.status(400).json({ message: "Invalid input" });
+  }
+
+  const where =
+    parsed.type === "email"
+      ? { email: parsed.value }
+      : { phoneNumber: parsed.value };
+
+  const user = await User.findOne({ where });
+
+  if (
+    !user ||
+    user.otp !== otp ||
+    !user.otpExpiresAt ||
+    new Date() > user.otpExpiresAt
+  ) {
+    return res.status(400).json({ message: "Invalid or expired OTP" });
+  }
+
+  await user.update({ otp: null, otpExpiresAt: null });
+
+  const isNewUser = !user.name || !user.email || !user.phoneNumber;
+
+  const token = jwt.sign(
+    { id: user.id, role: "user" },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" },
+  );
+
+  res.json({
+    message: "Login successful",
+    token,
+    isNewUser,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+    },
+  });
+};
+
+exports.completeProfile = async (req, res) => {
+  const userId = req.user.id;
+  const { name, email, phoneNumber } = req.body;
+
+  const user = await User.findByPk(userId);
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  // Only update missing fields
+  const updateData = {};
+
+  if (!user.name && name) updateData.name = name;
+  if (!user.email && email) updateData.email = email;
+  if (!user.phoneNumber && phoneNumber) updateData.phoneNumber = phoneNumber;
+
+  if (Object.keys(updateData).length === 0) {
+    return res.json({ message: "Profile already complete" });
+  }
+
+  await user.update(updateData);
+
+  res.json({
+    message: "Profile completed successfully",
+    user,
+  });
 };
 
 const generateOtp = () =>

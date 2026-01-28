@@ -6,6 +6,10 @@ const userAuth = require("../middleware/userAuthMiddleware");
 router.post("/register", userController.registerUser);
 router.post("/login", userController.loginUser);
 router.get("/me", userAuth, userController.getLoggedInUser);
+router.post("/send-otp", userController.sendOtp);
+router.post("/verify-otp", userController.verifyOtp);
+router.put("/complete-profile", userAuth, userController.completeProfile);
+
 router.put("/change-password", userAuth, userController.changePassword);
 router.post("/forgot-password", userController.forgotPassword);
 router.post("/reset-password", userController.resetPassword);
