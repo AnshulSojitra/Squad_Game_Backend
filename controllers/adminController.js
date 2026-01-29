@@ -5,6 +5,7 @@ const { Op, fn, col } = require("sequelize");
 const adminLogin = require("../utils/templates/adminLogin");
 const { sendEmail } = require("../utils/email");
 const passwordChange = require("../utils/templates/passwordChange");
+const sequelize = require("../config/db");
 
 exports.loginAdmin = async (req, res) => {
   try {
@@ -178,6 +179,166 @@ exports.getAdminDashboard = async (req, res) => {
   } catch (error) {
     console.error("ADMIN DASHBOARD ERROR:", error);
     res.status(500).json({ message: "Failed to load dashboard" });
+  }
+};
+
+exports.getBookingChart = async (req, res) => {
+  try {
+    const adminId = req.admin.id;
+    const days = Number(req.query.days) || 7;
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    startDate.setHours(0, 0, 0, 0);
+
+    const data = await Booking.findAll({
+      attributes: [
+        [sequelize.fn("DATE", sequelize.col("Booking.date")), "date"],
+        [sequelize.fn("COUNT", sequelize.col("Booking.id")), "count"],
+      ],
+      where: {
+        date: { [Op.gte]: startDate },
+      },
+      include: [
+        {
+          model: Slot,
+          attributes: [],
+          required: true,
+          include: [
+            {
+              model: Ground,
+              attributes: [],
+              required: true,
+              where: { adminId },
+            },
+          ],
+        },
+      ],
+      group: [sequelize.fn("DATE", sequelize.col("Booking.date"))],
+      order: [[sequelize.fn("DATE", sequelize.col("Booking.date")), "ASC"]],
+      raw: true,
+    });
+
+    const formatted = data.map((d) => ({
+      date: d.date,
+      bookings: Number(d.count),
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error("BOOKING CHART ERROR:", error);
+    res.status(500).json({ message: "Failed to load booking chart" });
+  }
+};
+
+exports.getRevenueChart = async (req, res) => {
+  try {
+    const adminId = req.admin.id;
+    const days = Number(req.query.days) || 7;
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    startDate.setHours(0, 0, 0, 0);
+
+    const data = await Booking.findAll({
+      attributes: [
+        [sequelize.fn("DATE", sequelize.col("Booking.date")), "date"],
+        [sequelize.fn("SUM", sequelize.col("Booking.totalPrice")), "revenue"],
+      ],
+      where: {
+        date: { [Op.gte]: startDate },
+        status: "CONFIRMED",
+      },
+      include: [
+        {
+          model: Slot,
+          attributes: [],
+          required: true,
+          include: [
+            {
+              model: Ground,
+              attributes: [],
+              required: true,
+              where: { adminId },
+            },
+          ],
+        },
+      ],
+      group: [sequelize.fn("DATE", sequelize.col("Booking.date"))],
+      order: [[sequelize.fn("DATE", sequelize.col("Booking.date")), "ASC"]],
+      raw: true,
+    });
+
+    const formatted = data.map((d) => ({
+      date: d.date,
+      revenue: Number(d.revenue) || 0,
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error("REVENUE CHART ERROR:", error);
+    res.status(500).json({ message: "Failed to load revenue chart" });
+  }
+};
+
+exports.getGroundBreakdown = async (req, res) => {
+  try {
+    const adminId = req.admin.id;
+    const days = Number(req.query.days) || 7;
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    startDate.setHours(0, 0, 0, 0);
+
+    const data = await Ground.findAll({
+      attributes: [
+        ["id", "groundId"],
+        ["name", "groundName"],
+        [sequelize.fn("COUNT", sequelize.col("Slots.Bookings.id")), "bookings"],
+        [
+          sequelize.fn(
+            "COALESCE",
+            sequelize.fn("SUM", sequelize.col("Slots.Bookings.totalPrice")),
+            0,
+          ),
+          "revenue",
+        ],
+      ],
+      where: { adminId },
+      include: [
+        {
+          model: Slot,
+          attributes: [],
+          required: false,
+          include: [
+            {
+              model: Booking,
+              attributes: [],
+              required: false,
+              where: {
+                status: "CONFIRMED",
+                date: { [Op.gte]: startDate },
+              },
+            },
+          ],
+        },
+      ],
+      group: ["Ground.id"],
+      order: [[sequelize.literal("revenue"), "DESC"]],
+      raw: true,
+    });
+
+    const formatted = data.map((d) => ({
+      groundId: d.groundId,
+      groundName: d.groundName,
+      bookings: Number(d.bookings),
+      revenue: Number(d.revenue),
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error("GROUND BREAKDOWN ERROR:", error);
+    res.status(500).json({ message: "Failed to load ground breakdown" });
   }
 };
 
