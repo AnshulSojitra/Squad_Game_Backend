@@ -1,6 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { Admin, Booking, Slot, Ground } = require("../models");
+const { Admin, Booking, Slot, Ground, User } = require("../models");
 const { Op, fn, col } = require("sequelize");
 const adminLogin = require("../utils/templates/adminLogin");
 const { sendEmail } = require("../utils/email");
@@ -77,59 +77,107 @@ exports.getLoggedInAdmin = async (req, res) => {
   }
 };
 
-exports.getAdminRevenue = async (req, res) => {
+exports.getAdminDashboard = async (req, res) => {
   try {
     const adminId = req.admin.id;
 
-    const rows = await Booking.findAll({
-      attributes: [
-        [fn("SUM", col("Booking.totalPrice")), "totalRevenue"],
-        [col("Slot.Ground.id"), "groundId"],
-        [col("Slot.Ground.name"), "groundName"],
-      ],
+    // Today range
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Total & Active Grounds
+    const totalGrounds = await Ground.count({
+      where: { adminId },
+    });
+
+    const activeGrounds = await Ground.count({
+      where: { adminId, isBlocked: false },
+    });
+
+    //  Today Bookings
+    const todayBookings = await Booking.findAll({
       where: {
-        status: "confirmed",
+        date: {
+          [Op.between]: [startOfDay, endOfDay],
+        },
+      },
+      include: {
+        model: Slot,
+        required: true,
+        include: {
+          model: Ground,
+          required: true,
+          where: { adminId },
+        },
+      },
+    });
+
+    const confirmedBookings = todayBookings.filter(
+      (b) => b.status === "confirmed",
+    );
+
+    const cancelledBookings = todayBookings.filter(
+      (b) => b.status === "cancelled",
+    );
+
+    const todayRevenue = confirmedBookings.reduce(
+      (sum, b) => sum + Number(b.totalPrice),
+      0,
+    );
+
+    // Upcoming bookings (next 24 hours)
+    const now = new Date();
+    const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    const upcomingBookings = await Booking.findAll({
+      where: {
+        date: {
+          [Op.between]: [now, next24Hours],
+        },
+        status: "CONFIRMED",
       },
       include: [
         {
+          model: User,
+          attributes: ["name"],
+        },
+        {
           model: Slot,
-          attributes: [],
-          include: [
-            {
-              model: Ground,
-              attributes: [],
-              where: { adminId },
-            },
-          ],
+          include: {
+            model: Ground,
+            where: { adminId },
+            attributes: ["name"],
+          },
         },
       ],
-      group: ["Slot.Ground.id"],
-      raw: true, // 🔥 REQUIRED
+      order: [["date", "ASC"]],
+      limit: 5,
     });
 
-    // ❗ DO NOT access Slot or Ground here
-    let totalRevenue = 0;
-
-    const revenueByGround = rows.map((row) => {
-      const revenue = Number(row.totalRevenue) || 0;
-      totalRevenue += revenue;
-
-      return {
-        groundId: row.groundId,
-        groundName: row.groundName,
-        revenue,
-      };
-    });
+    const formattedUpcoming = upcomingBookings.map((b) => ({
+      bookingId: b.id,
+      date: b.date,
+      startTime: b.Slot.startTime,
+      endTime: b.Slot.endTime,
+      groundName: b.Slot.Ground.name,
+      userName: b.User?.name || "User",
+    }));
 
     res.json({
-      totalRevenue,
-      revenueByGround,
+      todayBookings: todayBookings.length,
+      confirmedBookings: confirmedBookings.length,
+      cancelledBookings: cancelledBookings.length,
+      todayRevenue,
+      activeGrounds,
+      totalGrounds,
+      upcomingBookings: formattedUpcoming,
     });
   } catch (error) {
-    console.error("Admin revenue error:", error);
-    res.status(500).json({
-      message: "Failed to fetch revenue",
-    });
+    console.error("ADMIN DASHBOARD ERROR:", error);
+    res.status(500).json({ message: "Failed to load dashboard" });
   }
 };
 

@@ -7,7 +7,7 @@ router.post("/login", adminController.loginAdmin);
 
 router.get("/me", adminAuth, adminController.getLoggedInAdmin);
 
-router.get("/revenue", adminAuth, adminController.getAdminRevenue);
+router.get("/dashboard", adminAuth, adminController.getAdminDashboard);
 
 router.put("/change-password", adminAuth, adminController.changePassword);
 
