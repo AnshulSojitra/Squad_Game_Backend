@@ -225,22 +225,67 @@ exports.completeProfile = async (req, res) => {
 
   const user = await User.findByPk(userId);
 
+  isValidIndianPhoneNumber = (phone) => {
+    if (!phone) return false;
+
+    const normalized = phone.toString().trim();
+
+    const regex = /^[6-9]\d{9}$/;
+
+    return regex.test(normalized);
+  };
   if (!user) {
     return res.status(404).json({ message: "User not found" });
   }
 
-  // Only update missing fields
   const updateData = {};
 
-  if (!user.name && name) updateData.name = name;
-  if (!user.email && email) updateData.email = email;
-  if (!user.phoneNumber && phoneNumber) updateData.phoneNumber = phoneNumber;
+  // Name validation
+  if (!user.name && name) {
+    if (name.trim().length < 2) {
+      return res.status(400).json({
+        message: "Name must be at least 2 characters long",
+      });
+    }
+    updateData.name = name.trim();
+  }
+
+  // Email validation
+  if (!user.email && email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        message: "Invalid email format",
+      });
+    }
+    updateData.email = email.toLowerCase().trim();
+  }
+
+  // Phone number validation
+  if (!user.phoneNumber && phoneNumber) {
+    if (!isValidIndianPhoneNumber(phoneNumber)) {
+      return res.status(400).json({
+        message:
+          "Invalid phone number. Enter a valid 10-digit Indian mobile number",
+      });
+    }
+    updateData.phoneNumber = phoneNumber.trim();
+  }
 
   if (Object.keys(updateData).length === 0) {
     return res.json({ message: "Profile already complete" });
   }
 
-  await user.update(updateData);
+  try {
+    await user.update(updateData);
+  } catch (error) {
+    if (error.name === "SequelizeUniqueConstraintError") {
+      return res.status(409).json({
+        message: "Email or phone number already in use",
+      });
+    }
+    throw error;
+  }
 
   res.json({
     message: "Profile completed successfully",

@@ -19,6 +19,7 @@ const User = sequelize.define("User", {
 
   phoneNumber: {
     type: DataTypes.STRING,
+    unique: true,
     allowNull: true,
   },
 
@@ -34,12 +35,7 @@ const User = sequelize.define("User", {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
   },
-  // resetPasswordOtp: {
-  //   type: DataTypes.STRING,
-  // },
-  // resetPasswordOtpExpires: {
-  //   type: DataTypes.DATE,
-  // },
+
   otp: {
     type: DataTypes.STRING,
     allowNull: true,

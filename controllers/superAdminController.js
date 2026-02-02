@@ -19,6 +19,7 @@ const { sendEmail } = require("../utils/email");
 const path = require("path");
 const fs = require("fs");
 const e = require("express");
+const { Op } = require("sequelize");
 
 exports.getLoggedInSuperAdmin = async (req, res) => {
   try {
@@ -134,6 +135,31 @@ exports.getUserBookings = async (req, res) => {
   } catch (error) {
     console.error("Get user bookings error:", error);
     res.status(500).json({ message: "Failed to fetch user bookings" });
+  }
+};
+
+exports.deleteUser = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await sequelize.transaction(async (t) => {
+      const user = await User.findByPk(id, { transaction: t });
+
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      await user.destroy({ transaction: t });
+    });
+
+    res.status(200).json({
+      message: "User and all associated data deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete user error:", error.message);
+    res.status(400).json({
+      message: error.message || "Failed to delete user",
+    });
   }
 };
 
@@ -676,5 +702,207 @@ exports.deleteGround = async (req, res) => {
   } catch (error) {
     console.error("DELETE GROUND ERROR:", error);
     res.status(500).json({ message: "Failed to delete ground" });
+  }
+};
+
+// DASHBOARD METHODS
+
+exports.getSuperAdminDashboard = async (req, res) => {
+  try {
+    /*  DATE RANGES  */
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    /*  PLATFORM TOTALS  */
+
+    const [
+      totalUsers,
+      totalAdmins,
+      totalGrounds,
+      activeGrounds,
+      totalBookings,
+      totalRevenueResult,
+    ] = await Promise.all([
+      User.count(),
+      Admin.count(),
+      Ground.count(),
+      Ground.count({ where: { isBlocked: false } }),
+      Booking.count(),
+      Booking.findOne({
+        attributes: [
+          [
+            sequelize.fn(
+              "COALESCE",
+              sequelize.fn("SUM", sequelize.col("totalPrice")),
+              0,
+            ),
+            "revenue",
+          ],
+        ],
+        where: { status: "CONFIRMED" },
+        raw: true,
+      }),
+    ]);
+
+    const totalRevenue = Number(totalRevenueResult.revenue || 0);
+
+    /*  TODAY STATS  */
+
+    const [bookingsToday, revenueTodayResult, newUsersToday, newGroundsToday] =
+      await Promise.all([
+        Booking.count({
+          where: {
+            date: { [Op.between]: [todayStart, todayEnd] },
+          },
+        }),
+        Booking.findOne({
+          attributes: [
+            [
+              sequelize.fn(
+                "COALESCE",
+                sequelize.fn("SUM", sequelize.col("totalPrice")),
+                0,
+              ),
+              "revenue",
+            ],
+          ],
+          where: {
+            status: "CONFIRMED",
+            date: { [Op.between]: [todayStart, todayEnd] },
+          },
+          raw: true,
+        }),
+        User.count({
+          where: {
+            createdAt: { [Op.between]: [todayStart, todayEnd] },
+          },
+        }),
+        Ground.count({
+          where: {
+            createdAt: { [Op.between]: [todayStart, todayEnd] },
+          },
+        }),
+      ]);
+
+    const revenueToday = Number(revenueTodayResult.revenue || 0);
+
+    /*  TOP GROUNDS   */
+
+    //  Aggregate from Bookings
+    const bookingStats = await Booking.findAll({
+      attributes: [
+        [sequelize.col("Slot.Ground.id"), "groundId"],
+        [sequelize.fn("COUNT", sequelize.col("Booking.id")), "bookings"],
+        [
+          sequelize.fn(
+            "COALESCE",
+            sequelize.fn("SUM", sequelize.col("Booking.totalPrice")),
+            0,
+          ),
+          "revenue",
+        ],
+      ],
+      where: { status: "CONFIRMED" },
+      include: [
+        {
+          model: Slot,
+          attributes: [],
+          required: true,
+          include: [
+            {
+              model: Ground,
+              attributes: [],
+              required: true,
+              include: [
+                {
+                  model: City,
+                  as: "City",
+                  attributes: ["name"],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      group: ["Slot.Ground.id"],
+      raw: true,
+    });
+
+    // Fetch all grounds
+    const allGrounds = await Ground.findAll({
+      attributes: ["id", "name", "city"],
+      include: [
+        {
+          model: City,
+          as: "City",
+          attributes: ["name"],
+        },
+      ],
+      raw: true,
+    });
+
+    //  Merge → include zero-booking grounds
+    const statsMap = {};
+    bookingStats.forEach((s) => {
+      statsMap[s.groundId] = s;
+    });
+
+    const groundPerformance = allGrounds.map((g) => ({
+      groundId: g.id,
+      groundName: g.name,
+      city: g.City,
+      bookings: Number(statsMap[g.id]?.bookings || 0),
+      revenue: Number(statsMap[g.id]?.revenue || 0),
+    }));
+
+    //  Sort & take top 5
+    groundPerformance.sort((a, b) => b.revenue - a.revenue);
+    const topGrounds = groundPerformance.slice(0, 5);
+
+    /*  ALERTS  */
+
+    const groundsWithZeroBookings = groundPerformance.filter(
+      (g) => g.bookings === 0,
+    ).length;
+
+    const inactiveAdmins = await Admin.count({
+      where: {
+        updatedAt: {
+          [Op.lt]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        },
+      },
+    });
+
+    /*  RESPONSE  */
+
+    res.json({
+      platformStats: {
+        totalUsers,
+        totalAdmins,
+        totalGrounds,
+        activeGrounds,
+        inactiveGrounds: totalGrounds - activeGrounds,
+        totalBookings,
+        totalRevenue,
+      },
+      todayStats: {
+        bookingsToday,
+        revenueToday,
+        newUsersToday,
+        newGroundsToday,
+      },
+      topGrounds,
+      alerts: {
+        groundsWithZeroBookings,
+        inactiveAdmins,
+      },
+    });
+  } catch (error) {
+    console.error("SUPER ADMIN DASHBOARD ERROR:", error);
+    res.status(500).json({ message: "Failed to load super admin dashboard" });
   }
 };

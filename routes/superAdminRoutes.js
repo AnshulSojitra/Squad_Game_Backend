@@ -21,6 +21,8 @@ const {
   createAdmin,
   deleteGround,
   deleteAdmin,
+  getSuperAdminDashboard,
+  deleteUser,
 } = require("../controllers/superAdminController");
 const { loginSuperAdmin } = require("../controllers/superAdminAuthController");
 
@@ -33,6 +35,7 @@ router.get("/users", superAdminAuth, getAllUsers);
 router.get("/user/:id", superAdminAuth, getUserById);
 router.patch("/user/block/:id", superAdminAuth, toggleUserBlock);
 router.get("/users/:userId/bookings", superAdminAuth, getUserBookings);
+router.delete("/user/:id", superAdminAuth, deleteUser);
 
 module.exports = router;
 
@@ -54,5 +57,8 @@ router.delete("/ground/:id", superAdminAuth, deleteGround);
 router.get("/bookings", superAdminAuth, getAllBookings);
 router.patch("/bookings/:id/cancel", superAdminAuth, cancelBooking);
 router.patch("/bookings/:id/complete", superAdminAuth, completeBooking);
+
+//DASHBOARD ROUTE
+router.get("/dashboard", superAdminAuth, getSuperAdminDashboard);
 
 module.exports = router;
