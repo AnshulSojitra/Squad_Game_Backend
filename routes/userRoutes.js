@@ -9,5 +9,6 @@ router.get("/me", userAuth, userController.getLoggedInUser);
 router.post("/send-otp", userController.sendOtp);
 router.post("/verify-otp", userController.verifyOtp);
 router.put("/complete-profile", userAuth, userController.completeProfile);
+router.put("/change-name", userAuth, userController.changeName);
 
 module.exports = router;

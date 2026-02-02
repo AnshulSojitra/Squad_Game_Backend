@@ -48,12 +48,8 @@ const Ground = sequelize.define(
       field: "city",
     },
 
-    latitude: {
-      type: DataTypes.DECIMAL(10, 8),
-      allowNull: true,
-    },
-    longitude: {
-      type: DataTypes.DECIMAL(11, 8),
+    locationUrl: {
+      type: DataTypes.TEXT,
       allowNull: true,
     },
 

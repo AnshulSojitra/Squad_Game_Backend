@@ -119,57 +119,64 @@ exports.getLoggedInUser = async (req, res) => {
 };
 
 exports.sendOtp = async (req, res) => {
-  const { login } = req.body;
+  try {
+    const { login } = req.body;
 
-  const parsed = identifyLoginField(login);
-  if (!parsed) {
-    return res.status(400).json({ message: "Invalid email or phone number" });
-  }
-
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiry = new Date(Date.now() + 5 * 60 * 1000);
-
-  let user;
-  let isNewUser = false;
-
-  if (parsed.type === "email") {
-    user = await User.findOne({ where: { email: parsed.value } });
-
-    if (!user) {
-      user = await User.create({ email: parsed.value });
-      isNewUser = true;
+    const parsed = identifyLoginField(login);
+    if (!parsed) {
+      return res.status(400).json({ message: "Invalid email or phone number" });
     }
-  } else {
-    user = await User.findOne({ where: { phoneNumber: parsed.value } });
 
-    if (!user) {
-      user = await User.create({ phoneNumber: parsed.value });
-      isNewUser = true;
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = new Date(Date.now() + 5 * 60 * 1000);
+
+    let user;
+    let isNewUser = false;
+
+    if (parsed.type === "email") {
+      user = await User.findOne({ where: { email: parsed.value } });
+
+      if (!user) {
+        user = await User.create({ email: parsed.value });
+        isNewUser = true;
+      }
+    } else {
+      user = await User.findOne({ where: { phoneNumber: parsed.value } });
+
+      if (!user) {
+        user = await User.create({ phoneNumber: parsed.value });
+        isNewUser = true;
+      }
     }
-  }
 
-  await user.update({
-    otp,
-    otpExpiresAt: expiry,
-  });
-
-  // send OTP (email / sms)
-  if (parsed.type === "email") {
-    await sendEmail({
-      to: parsed.value,
-      subject: "Your Box Arena OTP",
-      html: `<h2>${otp}</h2><p>Valid for 5 minutes</p>`,
+    await user.update({
+      otp,
+      otpExpiresAt: expiry,
     });
-  } else {
-    await sendSms({
-      to: `+91${parsed.value}`,
-      message: `Your Box Arena OTP is ${otp}. Valid for 5 minutes.`,
-    });
-  }
 
-  res.json({
-    message: "OTP sent successfully",
-  });
+    // send OTP (email / sms)
+    if (parsed.type === "email") {
+      await sendEmail({
+        to: parsed.value,
+        subject: "Your Box Arena OTP",
+        html: `<h2>${otp}</h2><p>Valid for 5 minutes</p>`,
+      });
+    } else {
+      await sendSms({
+        to: `+91${parsed.value}`,
+        message: `Your Box Arena OTP is ${otp}. Valid for 5 minutes.`,
+      });
+    }
+
+    res.json({
+      message: "OTP sent successfully",
+    });
+  } catch (error) {
+    console.error("SEND OTP ERROR FULL:", error);
+    console.error("PARENT:", error.parent);
+    console.error("ORIGINAL:", error.original);
+    return res.status(500).json({ message: "Failed to send OTP" });
+  }
 };
 
 exports.verifyOtp = async (req, res) => {
@@ -291,4 +298,39 @@ exports.completeProfile = async (req, res) => {
     message: "Profile completed successfully",
     user,
   });
+};
+
+exports.changeName = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { name } = req.body;
+
+    if (!name || name.trim().length < 2) {
+      return res.status(400).json({
+        message: "Name must be at least 2 characters long",
+      });
+    }
+
+    const user = await User.findByPk(userId);
+
+    if (!user || user.isDeleted) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    await user.update({
+      name: name.trim(),
+    });
+
+    res.json({
+      message: "Name updated successfully",
+      name: user.name,
+    });
+  } catch (error) {
+    console.error("CHANGE NAME ERROR:", error);
+    res.status(500).json({
+      message: "Failed to update name",
+    });
+  }
 };
