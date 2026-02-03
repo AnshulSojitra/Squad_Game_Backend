@@ -4,7 +4,7 @@
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable(
-      "SuperAdmin",
+      "Super_admins",
       {
         id: {
           type: Sequelize.INTEGER,
@@ -28,11 +28,9 @@ module.exports = {
       {
         tableName: "super_admins",
         timestamps: true,
-        createdAt: "created_at",
-        updatedAt: false,
       },
     );
-    await queryInterface.createTable("Admin", {
+    await queryInterface.createTable("Admins", {
       id: {
         type: Sequelize.INTEGER,
         autoIncrement: true,
@@ -64,7 +62,7 @@ module.exports = {
         type: Sequelize.DATE,
       },
     });
-    await queryInterface.createTable("User", {
+    await queryInterface.createTable("Users", {
       id: {
         type: Sequelize.INTEGER,
         autoIncrement: true,
@@ -104,7 +102,7 @@ module.exports = {
         allowNull: true,
       },
     });
-    await queryInterface.createTable("Country", {
+    await queryInterface.createTable("Countries", {
       id: {
         type: Sequelize.BIGINT,
         autoIncrement: true,
@@ -121,7 +119,7 @@ module.exports = {
         type: Sequelize.STRING,
       },
     });
-    await queryInterface.createTable("State", {
+    await queryInterface.createTable("States", {
       id: {
         type: Sequelize.BIGINT,
         autoIncrement: true,
@@ -132,7 +130,7 @@ module.exports = {
         allowNull: false,
       },
     });
-    await queryInterface.createTable("City", {
+    await queryInterface.createTable("Cities", {
       id: {
         type: Sequelize.BIGINT,
         autoIncrement: true,
@@ -144,7 +142,7 @@ module.exports = {
       },
     });
     await queryInterface.createTable(
-      "Ground",
+      "Grounds",
       {
         id: {
           type: Sequelize.INTEGER,
@@ -240,7 +238,7 @@ module.exports = {
         timestamps: true,
       },
     );
-    await queryInterface.createTable("Slot", {
+    await queryInterface.createTable("Slots", {
       id: {
         type: Sequelize.INTEGER,
         autoIncrement: true,
@@ -256,7 +254,7 @@ module.exports = {
       },
     });
     await queryInterface.createTable(
-      "GroundImage",
+      "GroundImages",
       {
         id: {
           type: Sequelize.INTEGER,
@@ -276,7 +274,7 @@ module.exports = {
       },
       { timestamps: true },
     );
-    await queryInterface.createTable("Amenity", {
+    await queryInterface.createTable("Amenities", {
       id: {
         type: Sequelize.INTEGER,
         autoIncrement: true,
@@ -293,7 +291,8 @@ module.exports = {
         allowNull: false,
       },
     });
-    await queryInterface.createTable("Booking", {
+
+    await queryInterface.createTable("Bookings", {
       id: {
         type: Sequelize.INTEGER,
         autoIncrement: true,
@@ -335,7 +334,8 @@ module.exports = {
         defaultValue: "confirmed",
       },
     });
-    await queryInterface.createTable("Review", {
+
+    await queryInterface.createTable("Reviews", {
       id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
@@ -359,18 +359,18 @@ module.exports = {
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("Review");
-    await queryInterface.dropTable("Booking");
-    await queryInterface.dropTable("Amenity");
-    await queryInterface.dropTable("GroundImage");
-    await queryInterface.dropTable("Slot");
-    await queryInterface.dropTable("Ground");
-    await queryInterface.dropTable("City");
-    await queryInterface.dropTable("State");
-    await queryInterface.dropTable("Country");
-    await queryInterface.dropTable("User");
-    await queryInterface.dropTable("Admin");
-    await queryInterface.dropTable("SuperAdmin");
+    await queryInterface.dropTable("Reviews");
+    await queryInterface.dropTable("Bookings");
+    await queryInterface.dropTable("Amenities");
+    await queryInterface.dropTable("GroundImages");
+    await queryInterface.dropTable("Slots");
+    await queryInterface.dropTable("Grounds");
+    await queryInterface.dropTable("Cities");
+    await queryInterface.dropTable("States");
+    await queryInterface.dropTable("Countries");
+    await queryInterface.dropTable("Users");
+    await queryInterface.dropTable("Admins");
+    await queryInterface.dropTable("Super_admins");
   },
 };
 

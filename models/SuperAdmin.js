@@ -26,9 +26,7 @@ const SuperAdmin = sequelize.define(
   {
     tableName: "super_admins",
     timestamps: true,
-    createdAt: "created_at",
-    updatedAt: false,
-  }
+  },
 );
 
 // sequelize.sync({ alter: true });

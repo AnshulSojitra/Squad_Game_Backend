@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 
 module.exports = {
   async up(queryInterface) {
-    await queryInterface.bulkInsert("SuperAdmin", [
+    await queryInterface.bulkInsert("Super_admins", [
       {
         name: "Super Admin",
         email: "superadmin@boxarena.com",
@@ -13,7 +13,7 @@ module.exports = {
   },
 
   async down(queryInterface) {
-    await queryInterface.bulkDelete("SuperAdmins", {
+    await queryInterface.bulkDelete("Super_admins", {
       email: "superadmin@boxarena.com",
     });
   },
