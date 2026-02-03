@@ -101,7 +101,7 @@ exports.getAdminDashboard = async (req, res) => {
     //  Today Bookings
     const todayBookings = await Booking.findAll({
       where: {
-        date: {
+        createdAt: {
           [Op.between]: [startOfDay, endOfDay],
         },
       },
@@ -138,7 +138,7 @@ exports.getAdminDashboard = async (req, res) => {
         date: {
           [Op.between]: [now, next24Hours],
         },
-        status: "CONFIRMED",
+        status: "confirmed",
       },
       include: [
         {
@@ -161,9 +161,9 @@ exports.getAdminDashboard = async (req, res) => {
     const formattedUpcoming = upcomingBookings.map((b) => ({
       bookingId: b.id,
       date: b.date,
-      startTime: b.Slot.startTime,
-      endTime: b.Slot.endTime,
-      groundName: b.Slot.Ground.name,
+      startTime: b.Slot?.startTime,
+      endTime: b.Slot?.endTime,
+      groundName: b.Slot?.Ground.name,
       userName: b.User?.name || "User",
     }));
 
@@ -188,16 +188,17 @@ exports.getBookingChart = async (req, res) => {
     const days = Number(req.query.days) || 7;
 
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+    startDate.setDate(startDate.getDate() - (days - 1));
     startDate.setHours(0, 0, 0, 0);
 
+    // Fetch actual booking data
     const data = await Booking.findAll({
       attributes: [
-        [sequelize.fn("DATE", sequelize.col("Booking.date")), "date"],
+        [sequelize.fn("DATE", sequelize.col("Booking.createdAt")), "date"],
         [sequelize.fn("COUNT", sequelize.col("Booking.id")), "count"],
       ],
       where: {
-        date: { [Op.gte]: startDate },
+        createdAt: { [Op.gte]: startDate },
       },
       include: [
         {
@@ -214,17 +215,31 @@ exports.getBookingChart = async (req, res) => {
           ],
         },
       ],
-      group: [sequelize.fn("DATE", sequelize.col("Booking.date"))],
-      order: [[sequelize.fn("DATE", sequelize.col("Booking.date")), "ASC"]],
+      group: [sequelize.fn("DATE", sequelize.col("Booking.createdAt"))],
       raw: true,
     });
 
-    const formatted = data.map((d) => ({
-      date: d.date,
-      bookings: Number(d.count),
-    }));
+    // Convert DB result → map
+    const bookingMap = {};
+    data.forEach((row) => {
+      bookingMap[row.date] = Number(row.count);
+    });
 
-    res.json(formatted);
+    // Generate all dates & fill missing with 0
+    const result = [];
+    for (let i = 1; i <= days; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+
+      const key = date.toISOString().split("T")[0];
+
+      result.push({
+        date: key,
+        bookings: bookingMap[key] || 0,
+      });
+    }
+
+    res.json(result);
   } catch (error) {
     console.error("BOOKING CHART ERROR:", error);
     res.status(500).json({ message: "Failed to load booking chart" });
@@ -237,17 +252,18 @@ exports.getRevenueChart = async (req, res) => {
     const days = Number(req.query.days) || 7;
 
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+    startDate.setDate(startDate.getDate() - (days - 1));
     startDate.setHours(0, 0, 0, 0);
 
+    // Fetch actual revenue data
     const data = await Booking.findAll({
       attributes: [
-        [sequelize.fn("DATE", sequelize.col("Booking.date")), "date"],
+        [sequelize.fn("DATE", sequelize.col("Booking.createdAt")), "date"],
         [sequelize.fn("SUM", sequelize.col("Booking.totalPrice")), "revenue"],
       ],
       where: {
         date: { [Op.gte]: startDate },
-        status: "CONFIRMED",
+        status: "confirmed",
       },
       include: [
         {
@@ -264,17 +280,31 @@ exports.getRevenueChart = async (req, res) => {
           ],
         },
       ],
-      group: [sequelize.fn("DATE", sequelize.col("Booking.date"))],
-      order: [[sequelize.fn("DATE", sequelize.col("Booking.date")), "ASC"]],
+      group: [sequelize.fn("DATE", sequelize.col("Booking.createdAt"))],
       raw: true,
     });
 
-    const formatted = data.map((d) => ({
-      date: d.date,
-      revenue: Number(d.revenue) || 0,
-    }));
+    // Convert DB rows → map
+    const revenueMap = {};
+    data.forEach((row) => {
+      revenueMap[row.date] = Number(row.revenue);
+    });
 
-    res.json(formatted);
+    // Generate full date range with zero revenue fallback
+    const result = [];
+    for (let i = 1; i <= days; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+
+      const key = date.toISOString().split("T")[0];
+
+      result.push({
+        date: key,
+        revenue: revenueMap[key] || 0,
+      });
+    }
+
+    res.json(result);
   } catch (error) {
     console.error("REVENUE CHART ERROR:", error);
     res.status(500).json({ message: "Failed to load revenue chart" });
@@ -316,7 +346,7 @@ exports.getGroundBreakdown = async (req, res) => {
               attributes: [],
               required: false,
               where: {
-                status: "CONFIRMED",
+                status: "confirmed",
                 date: { [Op.gte]: startDate },
               },
             },
