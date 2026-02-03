@@ -8,10 +8,10 @@ const {
   getGroundReviews,
 } = require("../controllers/groundController");
 
-// GET all grounds (public)
+// GET all grounds
 router.get("/", getPublicGrounds);
 
-// GET single ground (public)
+// GET single ground
 router.get("/:id", getPublicGroundById);
 
 // SLOT AVAILABILITY
