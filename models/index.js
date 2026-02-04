@@ -134,6 +134,16 @@ Booking.belongsTo(User, { foreignKey: "userId" });
 Booking.belongsTo(Admin, { foreignKey: "adminId" });
 Booking.belongsTo(City, { foreignKey: "cityId" });
 
+// Ground → Bookings (SNAPSHOT BASED)
+Ground.hasMany(Booking, {
+  foreignKey: "groundId",
+  onDelete: "CASCADE",
+});
+
+Booking.belongsTo(Ground, {
+  foreignKey: "groundId",
+});
+
 /* EXPORT  */
 
 module.exports = {

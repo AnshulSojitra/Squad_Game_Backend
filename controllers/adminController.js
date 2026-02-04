@@ -6,6 +6,7 @@ const adminLogin = require("../utils/templates/adminLogin");
 const { sendEmail } = require("../utils/email");
 const passwordChange = require("../utils/templates/passwordChange");
 const sequelize = require("../config/db");
+const { to12Hour } = require("../utils/time");
 
 exports.loginAdmin = async (req, res) => {
   try {
@@ -191,47 +192,35 @@ exports.getBookingChart = async (req, res) => {
     startDate.setDate(startDate.getDate() - (days - 1));
     startDate.setHours(0, 0, 0, 0);
 
-    // Fetch actual booking data
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+
     const data = await Booking.findAll({
       attributes: [
-        [sequelize.fn("DATE", sequelize.col("Booking.createdAt")), "date"],
-        [sequelize.fn("COUNT", sequelize.col("Booking.id")), "count"],
+        [sequelize.fn("DATE", sequelize.col("createdAt")), "date"],
+        [sequelize.fn("COUNT", sequelize.col("id")), "count"],
       ],
       where: {
-        createdAt: { [Op.gte]: startDate },
-      },
-      include: [
-        {
-          model: Slot,
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: Ground,
-              attributes: [],
-              required: true,
-              where: { adminId },
-            },
-          ],
+        adminId,
+        createdAt: {
+          [Op.between]: [startDate, endDate],
         },
-      ],
-      group: [sequelize.fn("DATE", sequelize.col("Booking.createdAt"))],
+      },
+      group: [sequelize.fn("DATE", sequelize.col("createdAt"))],
       raw: true,
     });
 
-    // Convert DB result → map
     const bookingMap = {};
     data.forEach((row) => {
       bookingMap[row.date] = Number(row.count);
     });
 
-    // Generate all dates & fill missing with 0
     const result = [];
-    for (let i = 1; i <= days; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
+    for (let i = 0; i < days; i++) {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
 
-      const key = date.toISOString().split("T")[0];
+      const key = d.toLocaleDateString("en-CA");
 
       result.push({
         date: key,
@@ -255,48 +244,38 @@ exports.getRevenueChart = async (req, res) => {
     startDate.setDate(startDate.getDate() - (days - 1));
     startDate.setHours(0, 0, 0, 0);
 
-    // Fetch actual revenue data
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+
+    //  Fetch revenue
     const data = await Booking.findAll({
       attributes: [
-        [sequelize.fn("DATE", sequelize.col("Booking.createdAt")), "date"],
-        [sequelize.fn("SUM", sequelize.col("Booking.totalPrice")), "revenue"],
+        [sequelize.fn("DATE", sequelize.col("createdAt")), "date"],
+        [sequelize.fn("SUM", sequelize.col("totalPrice")), "revenue"],
       ],
       where: {
-        date: { [Op.gte]: startDate },
+        adminId,
         status: "confirmed",
-      },
-      include: [
-        {
-          model: Slot,
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: Ground,
-              attributes: [],
-              required: true,
-              where: { adminId },
-            },
-          ],
+        createdAt: {
+          [Op.between]: [startDate, endDate],
         },
-      ],
-      group: [sequelize.fn("DATE", sequelize.col("Booking.createdAt"))],
+      },
+      group: [sequelize.fn("DATE", sequelize.col("createdAt"))],
       raw: true,
     });
 
-    // Convert DB rows → map
     const revenueMap = {};
     data.forEach((row) => {
       revenueMap[row.date] = Number(row.revenue);
     });
 
-    // Generate full date range with zero revenue fallback
+    // Fill missing dates with 0
     const result = [];
-    for (let i = 1; i <= days; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
+    for (let i = 0; i < days; i++) {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
 
-      const key = date.toISOString().split("T")[0];
+      const key = d.toLocaleDateString("en-CA"); // YYYY-MM-DD
 
       result.push({
         date: key,
@@ -324,11 +303,11 @@ exports.getGroundBreakdown = async (req, res) => {
       attributes: [
         ["id", "groundId"],
         ["name", "groundName"],
-        [sequelize.fn("COUNT", sequelize.col("Slots.Bookings.id")), "bookings"],
+        [sequelize.fn("COUNT", sequelize.col("Bookings.id")), "bookings"],
         [
           sequelize.fn(
             "COALESCE",
-            sequelize.fn("SUM", sequelize.col("Slots.Bookings.totalPrice")),
+            sequelize.fn("SUM", sequelize.col("Bookings.totalPrice")),
             0,
           ),
           "revenue",
@@ -337,20 +316,13 @@ exports.getGroundBreakdown = async (req, res) => {
       where: { adminId },
       include: [
         {
-          model: Slot,
+          model: Booking,
           attributes: [],
           required: false,
-          include: [
-            {
-              model: Booking,
-              attributes: [],
-              required: false,
-              where: {
-                status: "confirmed",
-                date: { [Op.gte]: startDate },
-              },
-            },
-          ],
+          where: {
+            status: "confirmed",
+            createdAt: { [Op.gte]: startDate },
+          },
         },
       ],
       group: ["Ground.id"],

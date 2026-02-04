@@ -12,6 +12,7 @@ const { Op } = require("sequelize");
 const { sendEmail } = require("../utils/email");
 const bookingTemplate = require("../utils/templates/bookingConfirmation");
 const cancelTemplate = require("../utils/templates/bookingCancellation");
+const { to12Hour } = require("../utils/time");
 
 /*** CREATE BOOKING*/
 
@@ -25,10 +26,10 @@ exports.createBooking = async (req, res) => {
   }
 
   try {
-    let slots;
+    let slots = [];
 
     await sequelize.transaction(async (t) => {
-      // ✅ STEP 1: FETCH SLOTS WITH *REQUIRED* GROUND
+      // FETCH SLOTS + FULL GROUND DATA
       slots = await Slot.findAll({
         where: {
           id: { [Op.in]: slotIds },
@@ -36,35 +37,46 @@ exports.createBooking = async (req, res) => {
         include: [
           {
             model: Ground,
-            required: true, // 🚨 VERY IMPORTANT
+            required: true,
             attributes: [
               "id",
               "name",
               "adminId",
+              "area",
               "cityId",
               "pricePerSlot",
               "isBlocked",
               "advanceBookingDays",
+            ],
+            include: [
+              { model: City, as: "City", attributes: ["name"] },
+              { model: State, as: "State", attributes: ["name"] },
+              { model: Country, as: "Country", attributes: ["name"] },
             ],
           },
         ],
         transaction: t,
       });
 
-      // ✅ STEP 2: VALIDATE SLOT IDS
+      //  VALIDATE SLOT IDS
       if (slots.length !== slotIds.length) {
         throw new Error("One or more slots are invalid or removed");
       }
 
-      // ✅ STEP 3: CHECK BLOCKED GROUND
-      if (slots.some((slot) => slot.Ground.isBlocked)) {
+      // CHECK BLOCKED GROUND
+      if (slots.some((s) => s.Ground.isBlocked)) {
         throw new Error("This ground is currently blocked");
       }
 
-      // All slots belong to same ground
+      //  ENSURE ALL SLOTS BELONG TO SAME GROUND
+      const groundId = slots[0].Ground.id;
+      if (slots.some((s) => s.Ground.id !== groundId)) {
+        throw new Error("All slots must belong to the same ground");
+      }
+
       const ground = slots[0].Ground;
 
-      // ✅ STEP 4: DATE VALIDATION
+      //  DATE VALIDATION
       const bookingDate = new Date(date);
       const today = new Date();
 
@@ -82,7 +94,7 @@ exports.createBooking = async (req, res) => {
         }
       }
 
-      // ✅ STEP 5: CHECK ALREADY BOOKED
+      //  CHECK ALREADY BOOKED SLOTS
       const alreadyBooked = await Booking.findAll({
         where: {
           slotId: { [Op.in]: slotIds },
@@ -96,29 +108,29 @@ exports.createBooking = async (req, res) => {
         throw new Error("One or more slots are already booked");
       }
 
-      //STEP 6: SNAPSHOT DATA
+      //  CREATE BOOKING SNAPSHOTS
       const bookingsData = slots.map((slot) => ({
+        // RELATIONS
         userId: req.user.id,
-
-        // RELATION IDs
         slotId: slot.id,
-        groundId: slot.Ground.id,
-        adminId: slot.Ground.adminId,
-        cityId: slot.Ground.cityId,
+        groundId: ground.id,
+        adminId: ground.adminId,
+        cityId: ground.cityId,
 
-        // SNAPSHOT FIELDS (DO NOT CHANGE LATER)
-        groundName: slot.Ground.name,
-        pricePerSlotAtBooking: slot.Ground.pricePerSlot,
+        // SNAPSHOT (IMMUTABLE)
+        groundName: ground.name,
+        area: ground.area,
+        city: ground.City?.name || null,
+        state: ground.State?.name || null,
+        country: ground.Country?.name || null,
 
-        // SLOT SNAPSHOT
         slotStartTime: slot.startTime,
         slotEndTime: slot.endTime,
 
-        // BOOKING META
+        pricePerSlotAtBooking: ground.pricePerSlot,
+        totalPrice: ground.pricePerSlot,
+
         date,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        totalPrice: slot.Ground.pricePerSlot,
         status: "confirmed",
       }));
 
@@ -144,21 +156,13 @@ exports.cancelBooking = async (req, res) => {
       });
     }
 
+    // Fetch booking owned by user
     const booking = await Booking.findOne({
       where: {
         id: bookingId,
-        status: "confirmed",
         userId: req.user.id,
+        status: "confirmed",
       },
-      include: [
-        {
-          model: Slot,
-          include: [{ model: Ground }],
-        },
-        {
-          model: User,
-        },
-      ],
     });
 
     if (!booking) {
@@ -167,32 +171,45 @@ exports.cancelBooking = async (req, res) => {
       });
     }
 
-    // cancel booking
+    //  Cancel booking
     booking.status = "cancelled";
     await booking.save();
 
-    // SEND CANCELLATION EMAIL
-    try {
-      const slotTime = `${booking.Slot.startTime} - ${booking.Slot.endTime}`;
+    //  Fetch user safely
+    const user = await User.findByPk(booking.userId, {
+      attributes: ["name", "email"],
+    });
 
-      await sendEmail({
-        to: booking.User.email,
-        subject: "Your Booking Has Been Cancelled ❌",
-        html: cancelTemplate({
-          userName: booking.User.name,
-          groundName: booking.Slot.Ground.name,
-          date: booking.date,
-          slots: [slotTime],
-        }),
-      });
-    } catch (emailError) {
-      console.error("CANCELLATION EMAIL FAILED:", emailError.message);
+    //  SEND CANCELLATION EMAIL
+    if (user?.email) {
+      try {
+        const slotTime = `${booking.slotStartTime} - ${booking.slotEndTime}`;
+
+        await sendEmail({
+          to: user.email,
+          subject: "Your Booking Has Been Cancelled ❌",
+          html: cancelTemplate({
+            userName: user.name,
+            groundName: booking.groundName,
+            date: booking.date,
+            slots: [slotTime],
+            price: booking.totalPrice,
+          }),
+        });
+      } catch (emailError) {
+        console.error("❌ CANCELLATION EMAIL FAILED:", emailError.message);
+      }
     }
 
-    res.json({ message: "Booking cancelled successfully" });
+    res.json({
+      message: "Booking cancelled successfully",
+      bookingId: booking.id,
+    });
   } catch (error) {
-    console.error("Cancel booking error:", error);
-    res.status(500).json({ message: "Failed to cancel booking" });
+    console.error("❌ Cancel booking error:", error);
+    res.status(500).json({
+      message: "Failed to cancel booking",
+    });
   }
 };
 
@@ -289,8 +306,8 @@ exports.getAdminBookings = async (req, res) => {
       },
 
       slot: {
-        startTime: b.slotStartTime,
-        endTime: b.slotEndTime,
+        startTime: to12Hour(b.slotStartTime),
+        endTime: to12Hour(b.slotEndTime),
       },
 
       city: b.City ? b.City.name : null,
@@ -310,64 +327,49 @@ exports.getMyBookings = async (req, res) => {
     const userId = req.user.id;
 
     const bookings = await Booking.findAll({
-      where: {
-        userId,
-      },
-      attributes: { exclude: ["createdAt"] },
-      include: [
-        {
-          model: Slot,
-          attributes: ["id", "startTime", "endTime"],
-          include: [
-            {
-              model: Ground,
-              attributes: ["id", "name", "area"],
-              include: [
-                {
-                  model: Country,
-                  as: "Country",
-                  attributes: ["id", "name"],
-                },
-                {
-                  model: State,
-                  as: "State",
-                  attributes: ["id", "name"],
-                },
-                {
-                  model: City,
-                  as: "City",
-                  attributes: ["id", "name"],
-                },
-              ],
-            },
-          ],
-        },
+      where: { userId },
+      attributes: [
+        "id",
+        "groundId",
+        "groundName",
+        "area",
+        "city",
+        "state",
+        "country",
+        "date",
+        "slotStartTime",
+        "slotEndTime",
+        "pricePerSlotAtBooking",
+        "totalPrice",
+        "status",
+        "createdAt",
       ],
-      order: [["status"], ["date", "ASC"], ["startTime", "ASC"]],
+      order: [
+        ["status", "ASC"],
+        ["date", "ASC"],
+        ["slotStartTime", "ASC"],
+      ],
     });
 
     const formatted = bookings.map((b) => ({
       bookingId: b.id,
       date: b.date,
       status: b.status,
-      startTime: b.startTime,
-      endTime: b.endTime,
+
+      slot: {
+        startTime: to12Hour(b.slotStartTime),
+        endTime: to12Hour(b.slotEndTime),
+      },
+
       totalPrice: b.totalPrice,
 
       ground: {
-        id: b.Slot?.Ground?.id,
-        name: b.Slot?.Ground?.name,
-        area: b.Slot?.Ground?.area,
-        game: b.Slot?.Ground?.game,
-        country: b.Slot?.Ground?.Country?.name,
-        state: b.Slot?.Ground?.State?.name,
-        city: b.Slot?.Ground?.City?.name,
-      },
-
-      slot: {
-        id: b.Slot?.id,
-        startTime: b.Slot?.startTime,
-        endTime: b.Slot?.endTime,
+        id: b.groundId,
+        name: b.groundName,
+        area: b.area,
+        city: b.city,
+        state: b.state,
+        country: b.country,
       },
 
       createdAt: b.createdAt,
@@ -375,6 +377,7 @@ exports.getMyBookings = async (req, res) => {
 
     res.json({
       success: true,
+      totalBookings: formatted.length,
       data: formatted,
     });
   } catch (error) {

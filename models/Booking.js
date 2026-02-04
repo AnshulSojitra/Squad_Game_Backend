@@ -53,6 +53,19 @@ const Booking = sequelize.define("Booking", {
   pricePerSlotAtBooking: {
     type: DataTypes.INTEGER,
   },
+  area: {
+    type: DataTypes.STRING,
+  },
+  city: {
+    type: DataTypes.STRING,
+  },
+  state: {
+    type: DataTypes.STRING,
+  },
+  country: {
+    type: DataTypes.STRING,
+  },
+
   cityId: { type: DataTypes.INTEGER },
 });
 

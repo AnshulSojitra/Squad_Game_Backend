@@ -99,46 +99,6 @@ exports.toggleUserBlock = async (req, res) => {
   }
 };
 
-// exports.getUserBookings = async (req, res) => {
-//   try {
-//     const { userId } = req.params;
-
-//     const user = await User.findByPk(userId, {
-//       attributes: ["id", "name", "email"],
-//     });
-
-//     if (!user) {
-//       return res.status(404).json({ message: "User not found" });
-//     }
-
-//     const bookings = await Booking.findAll({
-//       where: { userId },
-//       include: [
-//         {
-//           model: Slot,
-//           attributes: ["startTime", "endTime"],
-//           include: [
-//             {
-//               model: Ground,
-//               attributes: ["id", "name", "city", "state"],
-//             },
-//           ],
-//         },
-//       ],
-//       order: [["date", "DESC"]],
-//     });
-
-//     res.json({
-//       user,
-//       totalBookings: bookings.length,
-//       bookings,
-//     });
-//   } catch (error) {
-//     console.error("Get user bookings error:", error);
-//     res.status(500).json({ message: "Failed to fetch user bookings" });
-//   }
-// };
-
 exports.getUserBookings = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -177,7 +137,7 @@ exports.getUserBookings = async (req, res) => {
       bookingId: b.id,
       groundName: b.groundName,
       date: b.date,
-      slotTime: `${b.slotStartTime} - ${b.slotEndTime}`,
+      slotTime: `${to12Hour(b.slotStartTime)} - ${to12Hour(b.slotEndTime)}`,
       price: b.pricePerSlotAtBooking,
       status: b.status,
       bookedAt: b.createdAt,
@@ -516,8 +476,8 @@ exports.getAllBookings = async (req, res) => {
       bookingId: b.id,
       groundName: b.groundName,
       date: b.date,
-      slotStartTime: b.slotStartTime,
-      slotEndTime: b.slotEndTime,
+      slotStartTime: to12Hour(b.slotStartTime),
+      slotEndTime: to12Hour(b.slotEndTime),
       user: b.User
         ? {
             name: b.User.name,
@@ -556,19 +516,46 @@ exports.cancelBooking = async (req, res) => {
       return res.status(404).json({ message: "Booking not found" });
     }
 
+    // Prevent double cancellation
     if (booking.status === "cancelled") {
       return res.status(400).json({ message: "Booking already cancelled" });
     }
 
+    // Update status
     booking.status = "cancelled";
     await booking.save();
+
+    //  Fetch user only
+    const user = await User.findByPk(booking.userId, {
+      attributes: ["name", "email"],
+    });
+
+    //  Send cancellation email
+    if (user?.email) {
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: "Your Booking Has Been Cancelled",
+          html: `
+            <h2>Booking Cancelled</h2>
+            <p><strong>Ground:</strong> ${booking.groundName}</p>
+            <p><strong>Date:</strong> ${booking.date}</p>
+            <p><strong>Time:</strong> ${booking.slotStartTime} - ${booking.slotEndTime}</p>
+            <p><strong>Amount:</strong> ₹${booking.totalPrice}</p>
+            <p>If this was a mistake, you can book again anytime.</p>
+          `,
+        });
+      } catch (emailError) {
+        console.error("❌ CANCELLATION EMAIL FAILED:", emailError.message);
+      }
+    }
 
     res.status(200).json({
       message: "Booking cancelled successfully",
       bookingId: booking.id,
     });
   } catch (error) {
-    console.error("Cancel booking error:", error);
+    console.error("❌ Cancel booking error:", error);
     res.status(500).json({ message: "Failed to cancel booking" });
   }
 };
@@ -718,7 +705,7 @@ exports.getGroundBookings = async (req, res) => {
   try {
     const { groundId } = req.params;
 
-    //  Check ground exists
+    // Check ground exists
     const ground = await Ground.findByPk(groundId, {
       attributes: ["id", "name"],
     });
@@ -727,29 +714,57 @@ exports.getGroundBookings = async (req, res) => {
       return res.status(404).json({ message: "Ground not found" });
     }
 
-    //  Fetch bookings for this ground
+    // Fetch bookings
     const bookings = await Booking.findAll({
+      where: { groundId },
+      attributes: [
+        "id",
+        "date",
+        "slotStartTime",
+        "slotEndTime",
+        "pricePerSlotAtBooking",
+        "status",
+        "createdAt",
+      ],
       include: [
-        {
-          model: Slot,
-          where: { groundId },
-          attributes: ["startTime", "endTime"],
-        },
         {
           model: User,
           attributes: ["id", "name", "email"],
+          required: false,
         },
       ],
-      order: [["date", "DESC"]],
+      order: [["createdAt", "DESC"]],
     });
 
+    const formatted = bookings.map((b) => ({
+      bookingId: b.id,
+      date: b.date,
+      slot: {
+        startTime: to12Hour(b.slotStartTime),
+        endTime: to12Hour(b.slotEndTime),
+      },
+      price: b.pricePerSlotAtBooking,
+      status: b.status,
+      user: b.User
+        ? {
+            id: b.User.id,
+            name: b.User.name,
+            email: b.User.email,
+          }
+        : null,
+      createdAt: b.createdAt,
+    }));
+
     res.json({
-      ground,
-      totalBookings: bookings.length,
-      bookings,
+      ground: {
+        id: ground.id,
+        name: ground.name,
+      },
+      totalBookings: formatted.length,
+      bookings: formatted,
     });
   } catch (error) {
-    console.error("Get ground bookings error:", error);
+    console.error("GET GROUND BOOKINGS ERROR:", error);
     res.status(500).json({
       message: "Failed to fetch ground bookings",
     });

@@ -26,11 +26,6 @@ if (!fs.existsSync(uploadDir)) {
   console.log("📁 uploads folder created");
 }
 
-// sequelize
-//   .sync()
-//   .then(() => console.log("MySQL connected"))
-//   .catch((err) => console.error(err));
-
 const app = express();
 
 autoCompleteBookings();
