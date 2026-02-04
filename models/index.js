@@ -130,6 +130,10 @@ Amenity.belongsTo(Ground, {
   foreignKey: "groundId",
 });
 
+Booking.belongsTo(User, { foreignKey: "userId" });
+Booking.belongsTo(Admin, { foreignKey: "adminId" });
+Booking.belongsTo(City, { foreignKey: "cityId" });
+
 /* EXPORT  */
 
 module.exports = {

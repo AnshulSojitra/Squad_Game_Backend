@@ -1,6 +1,6 @@
 const cron = require("node-cron");
 const { Op } = require("sequelize");
-const { Booking, Slot } = require("../models");
+const { Booking } = require("../models");
 const moment = require("moment");
 
 const autoCompleteBookings = () => {
@@ -16,27 +16,27 @@ const autoCompleteBookings = () => {
             [Op.lte]: now.format("YYYY-MM-DD"),
           },
         },
-        include: [
-          {
-            model: Slot,
-            attributes: ["endTime"],
-          },
-        ],
+        attributes: ["id", "date", "slotEndTime"],
       });
 
       for (const booking of bookings) {
+        // Safety guard
+        if (!booking.date || !booking.slotEndTime) {
+          console.warn(`⚠️ Booking ${booking.id} missing date or slotEndTime`);
+          continue;
+        }
+
         const bookingEnd = moment(
-          `${booking.date} ${booking.Slot.endTime}`,
-          "YYYY-MM-DD HH:mm:ss"
+          `${booking.date} ${booking.slotEndTime}`,
+          "YYYY-MM-DD HH:mm:ss",
         );
 
         if (now.isAfter(bookingEnd)) {
-          booking.status = "completed";
-          await booking.save();
+          await booking.update({ status: "completed" });
         }
       }
     } catch (error) {
-      console.error("❌ Auto-complete cron error:", error.message);
+      console.error("❌ Auto-complete cron error:", error);
     }
   });
 };

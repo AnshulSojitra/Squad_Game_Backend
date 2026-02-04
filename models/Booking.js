@@ -24,16 +24,6 @@ const Booking = sequelize.define("Booking", {
     allowNull: false,
   },
 
-  startTime: {
-    type: DataTypes.TIME,
-    allowNull: false,
-  },
-
-  endTime: {
-    type: DataTypes.TIME,
-    allowNull: false,
-  },
-
   totalPrice: {
     type: DataTypes.INTEGER,
     allowNull: false,
@@ -43,6 +33,27 @@ const Booking = sequelize.define("Booking", {
     type: DataTypes.ENUM("confirmed", "cancelled", "completed"),
     defaultValue: "confirmed",
   },
+
+  groundId: {
+    type: DataTypes.INTEGER,
+  },
+
+  adminId: {
+    type: DataTypes.INTEGER,
+  },
+  groundName: {
+    type: DataTypes.STRING,
+  },
+  slotStartTime: {
+    type: DataTypes.TIME,
+  },
+  slotEndTime: {
+    type: DataTypes.TIME,
+  },
+  pricePerSlotAtBooking: {
+    type: DataTypes.INTEGER,
+  },
+  cityId: { type: DataTypes.INTEGER },
 });
 
 // sequelize.sync({ alter: true });

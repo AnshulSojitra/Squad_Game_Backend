@@ -28,44 +28,50 @@ exports.createBooking = async (req, res) => {
     let slots;
 
     await sequelize.transaction(async (t) => {
+      // ✅ STEP 1: FETCH SLOTS WITH *REQUIRED* GROUND
       slots = await Slot.findAll({
         where: {
           id: { [Op.in]: slotIds },
         },
-        include: {
-          model: Ground,
-          attributes: [
-            "name",
-            "pricePerSlot",
-            "isBlocked",
-            "advanceBookingDays",
-          ],
-        },
+        include: [
+          {
+            model: Ground,
+            required: true, // 🚨 VERY IMPORTANT
+            attributes: [
+              "id",
+              "name",
+              "adminId",
+              "cityId",
+              "pricePerSlot",
+              "isBlocked",
+              "advanceBookingDays",
+            ],
+          },
+        ],
         transaction: t,
       });
 
+      // ✅ STEP 2: VALIDATE SLOT IDS
       if (slots.length !== slotIds.length) {
-        throw new Error("One or more slots are invalid");
+        throw new Error("One or more slots are invalid or removed");
       }
 
+      // ✅ STEP 3: CHECK BLOCKED GROUND
       if (slots.some((slot) => slot.Ground.isBlocked)) {
         throw new Error("This ground is currently blocked");
       }
 
-      // All slots belong to the same ground
+      // All slots belong to same ground
       const ground = slots[0].Ground;
 
-      // Normalize dates (very important)
+      // ✅ STEP 4: DATE VALIDATION
       const bookingDate = new Date(date);
       const today = new Date();
 
       bookingDate.setHours(0, 0, 0, 0);
       today.setHours(0, 0, 0, 0);
 
-      if (
-        ground.advanceBookingDays !== null &&
-        ground.advanceBookingDays !== undefined
-      ) {
+      if (ground.advanceBookingDays !== null) {
         const maxAllowedDate = new Date(today);
         maxAllowedDate.setDate(today.getDate() + ground.advanceBookingDays);
 
@@ -76,6 +82,7 @@ exports.createBooking = async (req, res) => {
         }
       }
 
+      // ✅ STEP 5: CHECK ALREADY BOOKED
       const alreadyBooked = await Booking.findAll({
         where: {
           slotId: { [Op.in]: slotIds },
@@ -89,9 +96,25 @@ exports.createBooking = async (req, res) => {
         throw new Error("One or more slots are already booked");
       }
 
+      //STEP 6: SNAPSHOT DATA
       const bookingsData = slots.map((slot) => ({
         userId: req.user.id,
+
+        // RELATION IDs
         slotId: slot.id,
+        groundId: slot.Ground.id,
+        adminId: slot.Ground.adminId,
+        cityId: slot.Ground.cityId,
+
+        // SNAPSHOT FIELDS (DO NOT CHANGE LATER)
+        groundName: slot.Ground.name,
+        pricePerSlotAtBooking: slot.Ground.pricePerSlot,
+
+        // SLOT SNAPSHOT
+        slotStartTime: slot.startTime,
+        slotEndTime: slot.endTime,
+
+        // BOOKING META
         date,
         startTime: slot.startTime,
         endTime: slot.endTime,
@@ -101,39 +124,6 @@ exports.createBooking = async (req, res) => {
 
       await Booking.bulkCreate(bookingsData, { transaction: t });
     });
-
-    // SEND CONFIRMATION EMAIL
-
-    try {
-      const user = await User.findByPk(req.user.id);
-
-      slots.sort((a, b) => a.startTime.localeCompare(b.startTime));
-
-      const slotTimes = slots.map(
-        (slot) => `${slot.startTime} - ${slot.endTime}`,
-      );
-
-      const totalPrice = slots.reduce(
-        (sum, slot) => sum + slot.Ground.pricePerSlot,
-        0,
-      );
-
-      await sendEmail({
-        to: user.email,
-        subject: "Your Booking is Confirmed 🎉",
-        html: bookingTemplate({
-          userName: user.name,
-          groundName: slots[0].Ground.name,
-          date,
-          startTime: slots[0].startTime,
-          endTime: slots[slots.length - 1].endTime,
-          slots: slotTimes,
-          price: totalPrice,
-        }),
-      });
-    } catch (emailError) {
-      console.error("BOOKING EMAIL FAILED:", emailError.message);
-    }
 
     res.status(201).json({
       message: "Booking confirmed",
@@ -251,9 +241,20 @@ exports.getAdminBookings = async (req, res) => {
     const adminId = req.admin.id;
 
     const bookings = await Booking.findAll({
-      where: {
-        "$Slot.Ground.adminId$": adminId,
-      },
+      where: { adminId },
+      order: [["createdAt", "DESC"]],
+      attributes: [
+        "id",
+        "groundName",
+        "date",
+        "slotStartTime",
+        "slotEndTime",
+        "pricePerSlotAtBooking",
+        "status",
+        "createdAt",
+        "cityId",
+        "userId",
+      ],
       include: [
         {
           model: User,
@@ -261,24 +262,18 @@ exports.getAdminBookings = async (req, res) => {
           attributes: ["id", "name", "email", "phoneNumber"],
         },
         {
-          model: Slot,
-          required: true,
-          attributes: ["id", "startTime", "endTime"],
-          include: {
-            model: Ground,
-            required: true,
-            where: { adminId },
-            attributes: ["id", "name"],
-          },
+          model: City,
+          required: false,
+          attributes: ["id", "name"],
         },
       ],
-      order: [["createdAt", "DESC"]],
     });
 
     const formatted = bookings.map((b) => ({
       bookingId: b.id,
       bookingDate: b.date,
       status: b.status,
+      createdAt: b.createdAt,
 
       user: b.User
         ? {
@@ -289,22 +284,18 @@ exports.getAdminBookings = async (req, res) => {
           }
         : null,
 
-      ground: b.Slot?.Ground
-        ? {
-            id: b.Slot.Ground.id,
-            name: b.Slot.Ground.name,
-          }
-        : null,
+      ground: {
+        name: b.groundName,
+      },
 
-      slot: b.Slot
-        ? {
-            id: b.Slot.id,
-            startTime: b.Slot.startTime,
-            endTime: b.Slot.endTime,
-          }
-        : null,
+      slot: {
+        startTime: b.slotStartTime,
+        endTime: b.slotEndTime,
+      },
 
-      createdAt: b.createdAt,
+      city: b.City ? b.City.name : null,
+
+      price: b.pricePerSlotAtBooking,
     }));
 
     res.json(formatted);

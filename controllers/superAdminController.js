@@ -99,12 +99,52 @@ exports.toggleUserBlock = async (req, res) => {
   }
 };
 
+// exports.getUserBookings = async (req, res) => {
+//   try {
+//     const { userId } = req.params;
+
+//     const user = await User.findByPk(userId, {
+//       attributes: ["id", "name", "email"],
+//     });
+
+//     if (!user) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     const bookings = await Booking.findAll({
+//       where: { userId },
+//       include: [
+//         {
+//           model: Slot,
+//           attributes: ["startTime", "endTime"],
+//           include: [
+//             {
+//               model: Ground,
+//               attributes: ["id", "name", "city", "state"],
+//             },
+//           ],
+//         },
+//       ],
+//       order: [["date", "DESC"]],
+//     });
+
+//     res.json({
+//       user,
+//       totalBookings: bookings.length,
+//       bookings,
+//     });
+//   } catch (error) {
+//     console.error("Get user bookings error:", error);
+//     res.status(500).json({ message: "Failed to fetch user bookings" });
+//   }
+// };
+
 exports.getUserBookings = async (req, res) => {
   try {
     const { userId } = req.params;
 
     const user = await User.findByPk(userId, {
-      attributes: ["id", "name", "email"],
+      attributes: ["id", "name", "email", "phoneNumber"],
     });
 
     if (!user) {
@@ -113,28 +153,51 @@ exports.getUserBookings = async (req, res) => {
 
     const bookings = await Booking.findAll({
       where: { userId },
+      order: [["createdAt", "DESC"]],
+      attributes: [
+        "id",
+        "groundName",
+        "adminId",
+        "date",
+        "slotStartTime",
+        "slotEndTime",
+        "pricePerSlotAtBooking",
+        "status",
+        "createdAt",
+      ],
       include: [
         {
-          model: Slot,
-          attributes: ["startTime", "endTime"],
-          include: [
-            {
-              model: Ground,
-              attributes: ["id", "name", "city", "state"],
-            },
-          ],
+          model: Admin,
+          attributes: ["id", "name", "email"],
         },
       ],
-      order: [["date", "DESC"]],
     });
+
+    const formatted = bookings.map((b) => ({
+      bookingId: b.id,
+      groundName: b.groundName,
+      date: b.date,
+      slotTime: `${b.slotStartTime} - ${b.slotEndTime}`,
+      price: b.pricePerSlotAtBooking,
+      status: b.status,
+      bookedAt: b.createdAt,
+
+      admin: b.Admin
+        ? {
+            id: b.Admin.id,
+            name: b.Admin.name,
+            email: b.Admin.email,
+          }
+        : null,
+    }));
 
     res.json({
       user,
       totalBookings: bookings.length,
-      bookings,
+      bookings: formatted,
     });
   } catch (error) {
-    console.error("Get user bookings error:", error);
+    console.error("SUPER ADMIN GET USER BOOKINGS ERROR:", error);
     res.status(500).json({ message: "Failed to fetch user bookings" });
   }
 };
@@ -422,37 +485,63 @@ exports.deleteAdmin = async (req, res) => {
 exports.getAllBookings = async (req, res) => {
   try {
     const bookings = await Booking.findAll({
-      order: [["createdAt", "DESC"]],
+      order: [["id", "DESC"]],
+      attributes: [
+        "id",
+        "groundName",
+        "date",
+        "slotStartTime",
+        "slotEndTime",
+        "pricePerSlotAtBooking",
+        "status",
+        "createdAt",
+      ],
       include: [
         {
           model: User,
           attributes: ["id", "name", "email"],
         },
         {
-          model: Slot,
-          attributes: ["id", "startTime", "endTime"],
-          include: [
-            {
-              model: Ground,
-              attributes: ["id", "name", "area", "country", "state", "city"],
-              include: [
-                {
-                  model: Admin,
-                  attributes: ["id", "name", "email"],
-                },
-              ],
-            },
-          ],
+          model: Admin,
+          attributes: ["id", "name", "email"],
+        },
+        {
+          model: City,
+          attributes: ["id", "name"],
         },
       ],
     });
 
-    res.status(200).json({
-      count: bookings.length,
-      bookings,
-    });
+    const formatted = bookings.map((b) => ({
+      bookingId: b.id,
+      groundName: b.groundName,
+      date: b.date,
+      slotStartTime: b.slotStartTime,
+      slotEndTime: b.slotEndTime,
+      user: b.User
+        ? {
+            name: b.User.name,
+            email: b.User.email,
+          }
+        : null,
+
+      admin: b.Admin
+        ? {
+            name: b.Admin.name,
+            email: b.Admin.email,
+          }
+        : null,
+
+      city: b.City ? b.City.name : null,
+
+      price: b.pricePerSlotAtBooking,
+      status: b.status,
+      createdAt: b.createdAt,
+    }));
+
+    res.json(formatted);
   } catch (error) {
-    console.error("Get all bookings error:", error);
+    console.error("GET ALL BOOKINGS ERROR:", error);
     res.status(500).json({ message: "Failed to fetch bookings" });
   }
 };
