@@ -23,6 +23,20 @@ const { model } = require("mongoose");
 
 exports.createGround = async (req, res) => {
   try {
+    const adminId = req.admin.id;
+
+    // Count existing grounds of this admin
+    const groundCount = await Ground.count({
+      where: { adminId },
+    });
+
+    // Enforce limit
+    if (groundCount >= 10) {
+      return res.status(403).json({
+        message: "You can add a maximum of 10 grounds only",
+      });
+    }
+
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: "Images are required" });
     }

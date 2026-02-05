@@ -28,6 +28,7 @@ module.exports = {
       {
         tableName: "super_admins",
         timestamps: true,
+        freezeTableName: true,
       },
     );
     await queryInterface.createTable("Admins", {

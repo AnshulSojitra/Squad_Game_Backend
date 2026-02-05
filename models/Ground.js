@@ -92,9 +92,13 @@ const Ground = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    adminId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
   },
   {
-    tableName: "Grounds",
+    tableName: "grounds",
     timestamps: true,
   },
 );

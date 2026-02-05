@@ -20,7 +20,10 @@ const GroundImage = sequelize.define(
       allowNull: false,
     },
   },
-  { timestamps: true }
+  {
+    tableName: "groundimages",
+    timestamps: true,
+  },
 );
 
 module.exports = GroundImage;

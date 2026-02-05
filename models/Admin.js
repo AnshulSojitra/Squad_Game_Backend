@@ -1,38 +1,45 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 
-const Admin = sequelize.define("Admin", {
-  id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
-    primaryKey: true,
-  },
-  name: DataTypes.STRING,
-  email: {
-    type: DataTypes.STRING,
-    unique: true,
-  },
-  password: DataTypes.STRING,
-  phoneNumber: {
-    type: DataTypes.STRING(15),
-    allowNull: true,
-  },
+const Admin = sequelize.define(
+  "Admin",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    name: DataTypes.STRING,
+    email: {
+      type: DataTypes.STRING,
+      unique: true,
+    },
+    password: DataTypes.STRING,
+    phoneNumber: {
+      type: DataTypes.STRING(15),
+      allowNull: true,
+    },
 
-  role: {
-    type: DataTypes.STRING,
-    defaultValue: "admin",
+    role: {
+      type: DataTypes.STRING,
+      defaultValue: "admin",
+    },
+    isBlocked: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    resetPasswordOtp: {
+      type: DataTypes.STRING,
+    },
+    resetPasswordOtpExpires: {
+      type: DataTypes.DATE,
+    },
   },
-  isBlocked: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false,
+  {
+    tableName: "admins",
+    timestamps: true,
   },
-  resetPasswordOtp: {
-    type: DataTypes.STRING,
-  },
-  resetPasswordOtpExpires: {
-    type: DataTypes.DATE,
-  },
-});
+);
 
 // sequelize.sync({ alter: true });
 
