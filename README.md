@@ -1,13 +1,10 @@
 ---
-
 ## ⚙️ Prerequisites
 
 Make sure you have installed:
-
-- Node.js (v18+ recommended)
-- MySQL (v8+)
-- npm
-
+  - Node.js (v18+ recommended)
+  - MySQL (v8+)
+  - npm
 ---
 
 ## 🚀 Setup Instructions
@@ -34,14 +31,17 @@ npm install
 ---
 
 ### 3️⃣ Create the database
+
 Login to MySQL and run:
 
 ```bash
 CREATE DATABASE squad_game;
 ```
+
 ---
 
 ### 4️⃣ Environment variables
+
 Create a .env file and enter following details:
 
 ```bash
@@ -55,7 +55,7 @@ DB_HOST=localhost
 
 
 
-# JWT 
+# JWT
 JWT_SECRET=secret key name
 
 # Environment
@@ -67,6 +67,7 @@ NODE_ENV=development
 ---
 
 ### 5️⃣ Run database migrations
+
 This will create all tables and constraints.
 
 ```bash
@@ -82,9 +83,3 @@ npx sequelize-cli db:seed:all
 ```
 
 ---
-
-### 7️⃣ Run location script
-
-```bash
-node scripts/countryScript.js
-```
