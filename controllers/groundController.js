@@ -263,6 +263,7 @@ exports.updateGround = async (req, res) => {
       game: req.body.game,
       openingTime: req.body.openingTime,
       closingTime: req.body.closingTime,
+      advanceBookingDays: req.body.advanceBookingDays,
     });
 
     // If new images uploaded → replace old ones
@@ -538,9 +539,18 @@ exports.getPublicGrounds = async (req, res) => {
 
 exports.getPublicGroundById = async (req, res) => {
   try {
+    const { id } = req.params;
+    const { date } = req.query;
+
+    // Resolve booking date
+    const bookingDate = date ? new Date(date) : new Date();
+
+    bookingDate.setHours(0, 0, 0, 0);
+
+    // Fetch ground
     const ground = await Ground.findOne({
       where: {
-        id: req.params.id,
+        id,
         isBlocked: false,
       },
       include: [
@@ -563,17 +573,17 @@ exports.getPublicGroundById = async (req, res) => {
         {
           model: Country,
           as: "Country",
-          attributes: ["id", "name"],
+          attributes: ["name"],
         },
         {
           model: State,
           as: "State",
-          attributes: ["id", "name"],
+          attributes: ["name"],
         },
         {
           model: City,
           as: "City",
-          attributes: ["id", "name"],
+          attributes: ["name"],
         },
       ],
     });
@@ -582,6 +592,28 @@ exports.getPublicGroundById = async (req, res) => {
       return res.status(404).json({ message: "Ground not found" });
     }
 
+    // Fetch bookings for this ground + date
+    const bookings = await Booking.findAll({
+      where: {
+        groundId: ground.id,
+        date: bookingDate,
+        status: "confirmed",
+      },
+      attributes: ["slotId"],
+    });
+
+    // Create fast lookup set
+    const bookedSlotIds = new Set(bookings.map((b) => b.slotId));
+
+    // Attach availability to slots
+    const slotsWithAvailability = ground.Slots.map((slot) => ({
+      id: slot.id,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      available: !bookedSlotIds.has(slot.id),
+    }));
+
+    // Response
     res.json({
       id: ground.id,
       name: ground.name,
@@ -589,16 +621,16 @@ exports.getPublicGroundById = async (req, res) => {
       contactNo: ground.contactNo,
       game: ground.game,
       area: ground.area,
-      city: ground.City.name,
+      city: ground.City?.name || null,
+      state: ground.State?.name || null,
+      country: ground.Country?.name || null,
       locationUrl: ground.locationUrl,
       advanceBookingDays: ground.advanceBookingDays,
-      state: ground.State.name,
-      country: ground.Country.name,
       openingTime: ground.openingTime,
       closingTime: ground.closingTime,
       images: ground.images || [],
-      slots: ground.Slots || [],
       amenities: ground.amenities || [],
+      slots: slotsWithAvailability,
     });
   } catch (error) {
     console.error("GET PUBLIC GROUND ERROR:", error);
