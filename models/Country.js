@@ -22,6 +22,7 @@ const Country = sequelize.define(
   },
   {
     tableName: "countries",
+    timestamps: true,
   },
 );
 

@@ -23,6 +23,7 @@ const Amenity = sequelize.define(
   },
   {
     tableName: "amenities",
+    timestamps: true,
   },
 );
 

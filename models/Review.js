@@ -23,9 +23,18 @@ const Review = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    userId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    groundId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
   },
   {
     tableName: "reviews",
+    timestamps: true,
   },
 );
 
