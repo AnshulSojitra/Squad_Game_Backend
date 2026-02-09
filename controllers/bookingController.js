@@ -10,7 +10,6 @@ const {
 } = require("../models");
 const { Op } = require("sequelize");
 const { sendEmail } = require("../utils/email");
-const bookingTemplate = require("../utils/templates/bookingConfirmation");
 const cancelTemplate = require("../utils/templates/bookingCancellation");
 const { to12Hour } = require("../utils/time");
 
@@ -82,6 +81,12 @@ exports.createBooking = async (req, res) => {
 
       bookingDate.setHours(0, 0, 0, 0);
       today.setHours(0, 0, 0, 0);
+      // Normalize dates
+
+      // PAST DATE VALIDATION
+      if (bookingDate < today) {
+        throw new Error("You cannot book a slot for a past date");
+      }
 
       if (ground.advanceBookingDays !== null) {
         const maxAllowedDate = new Date(today);

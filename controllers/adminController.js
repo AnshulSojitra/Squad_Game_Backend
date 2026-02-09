@@ -1,12 +1,11 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { Admin, Booking, Slot, Ground, User } = require("../models");
-const { Op, fn, col } = require("sequelize");
+const { Admin, Booking, Ground, User } = require("../models");
+const { Op } = require("sequelize");
 const adminLogin = require("../utils/templates/adminLogin");
 const { sendEmail } = require("../utils/email");
 const passwordChange = require("../utils/templates/passwordChange");
 const sequelize = require("../config/db");
-const { to12Hour } = require("../utils/time");
 
 exports.loginAdmin = async (req, res) => {
   try {
@@ -90,7 +89,7 @@ exports.getAdminDashboard = async (req, res) => {
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
 
-    // Total & Active Grounds
+    // Grounds stats
     const totalGrounds = await Ground.count({
       where: { adminId },
     });
@@ -99,22 +98,15 @@ exports.getAdminDashboard = async (req, res) => {
       where: { adminId, isBlocked: false },
     });
 
-    //  Today Bookings
+    // TODAY BOOKINGS (snapshot-based)
     const todayBookings = await Booking.findAll({
       where: {
+        adminId,
         createdAt: {
           [Op.between]: [startOfDay, endOfDay],
         },
       },
-      include: {
-        model: Slot,
-        required: true,
-        include: {
-          model: Ground,
-          required: true,
-          where: { adminId },
-        },
-      },
+      attributes: ["id", "status", "totalPrice"],
     });
 
     const confirmedBookings = todayBookings.filter(
@@ -126,45 +118,45 @@ exports.getAdminDashboard = async (req, res) => {
     );
 
     const todayRevenue = confirmedBookings.reduce(
-      (sum, b) => sum + Number(b.totalPrice),
+      (sum, b) => sum + Number(b.totalPrice || 0),
       0,
     );
 
-    // Upcoming bookings (next 24 hours)
+    // UPCOMING BOOKINGS (next 24 hours) — SNAPSHOT BASED
     const now = new Date();
     const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
     const upcomingBookings = await Booking.findAll({
       where: {
-        date: {
-          [Op.between]: [now, next24Hours],
-        },
+        adminId,
         status: "confirmed",
+        date: {
+          [Op.between]: [
+            now.toISOString().split("T")[0],
+            next24Hours.toISOString().split("T")[0],
+          ],
+        },
       },
       include: [
         {
           model: User,
           attributes: ["name"],
         },
-        {
-          model: Slot,
-          include: {
-            model: Ground,
-            where: { adminId },
-            attributes: ["name"],
-          },
-        },
       ],
-      order: [["date", "ASC"]],
+      attributes: ["id", "date", "slotStartTime", "slotEndTime", "groundName"],
+      order: [
+        ["date", "ASC"],
+        ["slotStartTime", "ASC"],
+      ],
       limit: 5,
     });
 
     const formattedUpcoming = upcomingBookings.map((b) => ({
       bookingId: b.id,
       date: b.date,
-      startTime: b.Slot?.startTime,
-      endTime: b.Slot?.endTime,
-      groundName: b.Slot?.Ground.name,
+      startTime: b.slotStartTime,
+      endTime: b.slotEndTime,
+      groundName: b.groundName,
       userName: b.User?.name || "User",
     }));
 
@@ -255,7 +247,7 @@ exports.getRevenueChart = async (req, res) => {
       ],
       where: {
         adminId,
-        status: "confirmed",
+        status: { [Op.in]: ["confirmed", "completed"] },
         createdAt: {
           [Op.between]: [startDate, endDate],
         },
@@ -320,8 +312,12 @@ exports.getGroundBreakdown = async (req, res) => {
           attributes: [],
           required: false,
           where: {
-            status: "confirmed",
-            createdAt: { [Op.gte]: startDate },
+            status: {
+              [Op.in]: ["confirmed", "completed"], // ✅ FIX
+            },
+            createdAt: {
+              [Op.gte]: startDate,
+            },
           },
         },
       ],

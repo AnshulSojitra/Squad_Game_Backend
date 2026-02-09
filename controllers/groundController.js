@@ -14,8 +14,7 @@ const {
 } = require("../models");
 const fs = require("fs");
 const path = require("path");
-const { to12Hour, to24Hours } = require("../utils/time");
-const { model } = require("mongoose");
+const { to12Hour } = require("../utils/time");
 
 /* ADMIN CONTROLLERS */
 
@@ -544,7 +543,6 @@ exports.getPublicGroundById = async (req, res) => {
 
     // Resolve booking date
     const bookingDate = date ? new Date(date) : new Date();
-
     bookingDate.setHours(0, 0, 0, 0);
 
     // Fetch ground
@@ -592,28 +590,34 @@ exports.getPublicGroundById = async (req, res) => {
       return res.status(404).json({ message: "Ground not found" });
     }
 
-    // Fetch bookings for this ground + date
+    // Fetch bookings using SNAPSHOT times (not slotId)
     const bookings = await Booking.findAll({
       where: {
         groundId: ground.id,
         date: bookingDate,
         status: "confirmed",
       },
-      attributes: ["slotId"],
+      attributes: ["slotStartTime", "slotEndTime"],
+      raw: true,
     });
 
-    // Create fast lookup set
-    const bookedSlotIds = new Set(bookings.map((b) => b.slotId));
+    // Create a lookup set: "09:00:00-10:00:00"
+    const bookedTimeSet = new Set(
+      bookings.map((b) => `${b.slotStartTime}-${b.slotEndTime}`),
+    );
 
-    // Attach availability to slots
-    const slotsWithAvailability = ground.Slots.map((slot) => ({
-      id: slot.id,
-      startTime: slot.startTime,
-      endTime: slot.endTime,
-      available: !bookedSlotIds.has(slot.id),
-    }));
+    // Attach availability using TIME comparison
+    const slotsWithAvailability = ground.Slots.map((slot) => {
+      const key = `${slot.startTime}-${slot.endTime}`;
 
-    // Response
+      return {
+        id: slot.id,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        available: !bookedTimeSet.has(key),
+      };
+    });
+
     res.json({
       id: ground.id,
       name: ground.name,

@@ -18,7 +18,6 @@ const adminRegistration = require("../utils/templates/adminRegistration");
 const { sendEmail } = require("../utils/email");
 const path = require("path");
 const fs = require("fs");
-const e = require("express");
 const { Op } = require("sequelize");
 
 exports.getLoggedInSuperAdmin = async (req, res) => {

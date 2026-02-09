@@ -1,11 +1,8 @@
-const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { User } = require("../models");
 const userRegistration = require("../utils/templates/userRegistration");
-const passwordChange = require("../utils/templates/passwordChange");
 const { sendEmail } = require("../utils/email");
 const userLogin = require("../utils/templates/userLogin");
-const { Op } = require("sequelize");
 const { identifyLoginField } = require("../utils/identifyLoginField");
 const { sendSms } = require("../utils/sendSms");
 
@@ -124,7 +121,7 @@ exports.sendOtp = async (req, res) => {
       return res.status(400).json({ message: "Invalid email or phone number" });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = Math.floor(10000 + Math.random() * 90000).toString();
     const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
     let user;
