@@ -1,16 +1,91 @@
 module.exports = ({ adminName, adminEmail, adminPhone }) => `
-  <h2>Admin Account Created 🎉</h2>
-  <p>Hi <strong>${adminName}</strong>, you are now an Admin</p>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Account Created</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f6f8; font-family:Arial, Helvetica, sans-serif;">
 
-  <p>Your admin account has been successfully created.</p>
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0;">
+    <tr>
+      <td align="center">
 
-  <hr />
+        <!-- Main Card -->
+        <table width="600" cellpadding="0" cellspacing="0"
+          style="background:#ffffff; border-radius:10px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.08);">
 
-    <p><strong>Email:</strong> ${adminEmail}</p>
+          <!-- Header -->
+          <tr>
+            <td style="background:#111827; padding:25px; text-align:center;">
+              <h1 style="color:#ffffff; margin:0; font-size:22px;">
+                BoxArena Admin Panel
+              </h1>
+            </td>
+          </tr>
 
-    <p><strong>Phone:</strong> ${adminPhone}</p>
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px; color:#374151;">
 
-  <hr />
+              <h2 style="margin-top:0; color:#111827;">
+                Welcome to BoxArena 🎉
+              </h2>
 
-  <p>Thank you for using Box Arena.</p>
+              <p style="font-size:15px; line-height:1.6;">
+                Hello <strong>${adminName}</strong>,
+              </p>
+
+              <p style="font-size:15px; line-height:1.6;">
+                Your <strong>Admin account</strong> has been successfully created. 
+                You now have access to manage grounds, bookings, and platform operations.
+              </p>
+
+              <!-- Info Box -->
+              <table width="100%" cellpadding="12" cellspacing="0"
+                style="background:#f9fafb; border-radius:6px; margin:20px 0;">
+                <tr>
+                  <td style="font-size:14px; color:#111827;">
+                    <strong>Email:</strong> ${adminEmail}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:14px; color:#111827;">
+                    <strong>Phone:</strong> ${adminPhone}
+                  </td>
+                </tr>
+              </table>
+
+              <p style="font-size:14px; color:#6b7280;">
+                For security reasons, please ensure your credentials are kept confidential.
+              </p>
+
+              <!-- Button -->
+              <div style="text-align:center; margin-top:30px;">
+                <a href="#" 
+                  style="background:#2563eb; color:#ffffff; text-decoration:none; padding:12px 25px; border-radius:6px; font-size:14px;">
+                  Login to Admin Dashboard
+                </a>
+              </div>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f3f4f6; padding:20px; text-align:center; font-size:12px; color:#6b7280;">
+              © ${new Date().getFullYear()} BoxArena. All rights reserved.
+              <br/>
+              This is an automated message. Please do not reply.
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
 `;

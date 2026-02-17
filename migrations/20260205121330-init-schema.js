@@ -513,6 +513,22 @@ module.exports = {
         },
 
         cityId: { type: Sequelize.INTEGER },
+        razorpayOrderId: {
+          type: Sequelize.STRING,
+          allowNull: true,
+        },
+
+        razorpayPaymentId: {
+          type: Sequelize.STRING,
+          allowNull: true,
+        },
+
+        paymentStatus: {
+          type: Sequelize.ENUM("pending", "paid", "failed", "refunded"),
+          allowNull: false,
+          defaultValue: "pending",
+        },
+
         createdAt: {
           type: Sequelize.DATE,
           allowNull: false,

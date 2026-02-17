@@ -67,6 +67,21 @@ const Booking = sequelize.define(
     country: {
       type: DataTypes.STRING,
     },
+    razorpayOrderId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+
+    razorpayPaymentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+
+    paymentStatus: {
+      type: DataTypes.ENUM("pending", "paid", "failed", "refunded"),
+      allowNull: false,
+      defaultValue: "pending",
+    },
 
     cityId: { type: DataTypes.INTEGER },
   },

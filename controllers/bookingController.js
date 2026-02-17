@@ -12,6 +12,7 @@ const { Op } = require("sequelize");
 const { sendEmail } = require("../utils/email");
 const cancelTemplate = require("../utils/templates/bookingCancellation");
 const { to12Hour } = require("../utils/time");
+const bookingConfirmation = require("../utils/templates/bookingConfirmation");
 
 /*** CREATE BOOKING*/
 
@@ -141,6 +142,39 @@ exports.createBooking = async (req, res) => {
 
       await Booking.bulkCreate(bookingsData, { transaction: t });
     });
+
+    // SEND CONFIRMATION EMAIL
+
+    try {
+      const user = await User.findByPk(req.user.id);
+
+      slots.sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+      const slotTimes = slots.map(
+        (slot) => `${slot.startTime} - ${slot.endTime}`,
+      );
+
+      const totalPrice = slots.reduce(
+        (sum, slot) => sum + slot.Ground.pricePerSlot,
+        0,
+      );
+
+      await sendEmail({
+        to: user.email,
+        subject: "Your Booking is Confirmed 🎉",
+        html: bookingConfirmation({
+          userName: user.name,
+          groundName: slots[0].Ground.name,
+          date,
+          startTime: slots[0].startTime,
+          endTime: slots[slots.length - 1].endTime,
+          price: totalPrice,
+          slots: slotTimes,
+        }),
+      });
+    } catch (emailError) {
+      console.error("BOOKING EMAIL FAILED:", emailError.message);
+    }
 
     res.status(201).json({
       message: "Booking confirmed",

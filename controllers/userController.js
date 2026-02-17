@@ -207,6 +207,20 @@ exports.verifyOtp = async (req, res) => {
     { expiresIn: "7d" },
   );
 
+  try {
+    if (user.email) {
+      sendEmail({
+        to: user.email,
+        subject: "Login Successful - BoxArena",
+        html: userLogin({ name: user.name }),
+      }).catch((err) => {
+        console.error("Login email failed:", err);
+      });
+    }
+  } catch (emailError) {
+    console.error("BOOKING EMAIL FAILED:", emailError.message);
+  }
+
   res.json({
     message: "Login successful",
     token,
@@ -286,6 +300,15 @@ exports.completeProfile = async (req, res) => {
       });
     }
     throw error;
+  }
+  if (user.email) {
+    sendEmail({
+      to: user.email,
+      subject: "Registration Successful - BoxArena",
+      html: userRegistration({ name: user.name }),
+    }).catch((err) => {
+      console.error("Registration email failed:", err);
+    });
   }
 
   res.json({

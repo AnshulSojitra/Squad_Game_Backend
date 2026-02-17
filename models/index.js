@@ -50,7 +50,6 @@ Slot.belongsTo(Ground, {
 
 /**
  * Ground → Images
- * Multiple images per ground
  */
 Ground.hasMany(GroundImage, {
   foreignKey: "groundId",
@@ -64,7 +63,6 @@ GroundImage.belongsTo(Ground, {
 
 /**
  * User → Bookings
- * A user can make many bookings
  */
 User.hasMany(Booking, {
   foreignKey: {
@@ -87,7 +85,6 @@ Review.belongsTo(Ground, { foreignKey: "groundId" });
 
 /**
  * Slot → Bookings
- * Each booking is for a specific slot
  */
 Slot.hasMany(Booking, {
   foreignKey: {
@@ -134,7 +131,7 @@ Booking.belongsTo(User, { foreignKey: "userId" });
 Booking.belongsTo(Admin, { foreignKey: "adminId" });
 Booking.belongsTo(City, { foreignKey: "cityId" });
 
-// Ground → Bookings (SNAPSHOT BASED)
+// Ground → Bookings
 Ground.hasMany(Booking, {
   foreignKey: "groundId",
   onDelete: "CASCADE",
