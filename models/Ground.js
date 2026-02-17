@@ -96,6 +96,11 @@ const Ground = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+
+    gstPercentage: {
+      type: DataTypes.DECIMAL(5, 2),
+      defaultValue: 0,
+    },
   },
   {
     tableName: "grounds",

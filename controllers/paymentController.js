@@ -37,14 +37,14 @@ exports.createRazorpayOrder = async (req, res) => {
     bookingDate.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
 
-    // past date booking
+    // Past date booking validation
     if (bookingDate < today) {
       return res.status(400).json({
         message: "You cannot book slots for a past date",
       });
     }
 
-    // Fetch slots + ground
+    // Fetch slots + ground (added gstPercentage)
     const slots = await Slot.findAll({
       where: {
         id: { [Op.in]: slotIds },
@@ -52,7 +52,13 @@ exports.createRazorpayOrder = async (req, res) => {
       include: {
         model: Ground,
         required: true,
-        attributes: ["id", "pricePerSlot", "isBlocked", "advanceBookingDays"],
+        attributes: [
+          "id",
+          "pricePerSlot",
+          "isBlocked",
+          "advanceBookingDays",
+          "gstPercentage", // ✅ Added
+        ],
       },
     });
 
@@ -83,7 +89,7 @@ exports.createRazorpayOrder = async (req, res) => {
       }
     }
 
-    // Check already booked slots
+    // Check already booked slots (confirmed only)
     const existingBookings = await Booking.findAll({
       where: {
         slotId: { [Op.in]: slotIds },
@@ -99,13 +105,27 @@ exports.createRazorpayOrder = async (req, res) => {
       });
     }
 
-    // Calculate total price
-    const totalAmount = slots.reduce(
-      (sum, slot) => sum + slot.Ground.pricePerSlot,
-      0,
-    );
+    /* ================== GST CALCULATION ================== */
 
-    // Create Razorpay order
+    let baseAmount = 0;
+    let gstAmount = 0;
+
+    const gstPercentage = Number(ground.gstPercentage || 0);
+
+    slots.forEach((slot) => {
+      const price = slot.Ground.pricePerSlot;
+      baseAmount += price;
+
+      if (gstPercentage > 0) {
+        gstAmount += (price * gstPercentage) / 100;
+      }
+    });
+
+    gstAmount = Math.round(gstAmount); // round to nearest rupee
+    const totalAmount = baseAmount + gstAmount;
+
+    /* ================== CREATE RAZORPAY ORDER ================== */
+
     const order = await razorpay.orders.create({
       amount: totalAmount * 100, // paise
       currency: "INR",
@@ -115,14 +135,22 @@ exports.createRazorpayOrder = async (req, res) => {
         groundId: ground.id,
         date: req.body.date,
         slots: slotIds.join(","),
+        baseAmount,
+        gstAmount,
+        gstPercentage,
       },
     });
 
     res.status(200).json({
       orderId: order.id,
-      amount: totalAmount,
+      amount: totalAmount, // send final amount to frontend
       currency: "INR",
       key: process.env.RAZORPAY_KEY_ID,
+
+      // optional: send breakup for UI display
+      baseAmount,
+      gstAmount,
+      gstPercentage,
     });
   } catch (error) {
     console.error("CREATE RAZORPAY ORDER ERROR:", error);
@@ -209,6 +237,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
               "state",
               "country",
               "area",
+              "gstPercentage",
             ],
             include: [
               { model: City, as: "City", attributes: ["name"] },
@@ -256,13 +285,19 @@ exports.verifyRazorpayPayment = async (req, res) => {
         adminId: slot.Ground.adminId,
 
         groundName: slot.Ground.name,
-        pricePerSlotAtBooking: slot.Ground.pricePerSlot,
+        pricePerSlotAtBooking:
+          slot.Ground.pricePerSlot +
+          (slot.Ground.pricePerSlot * Number(slot.Ground.gstPercentage || 0)) /
+            100,
 
         slotStartTime: slot.startTime,
         slotEndTime: slot.endTime,
 
         date: bookingDate,
-        totalPrice: slot.Ground.pricePerSlot,
+        totalPrice:
+          slot.Ground.pricePerSlot +
+          (slot.Ground.pricePerSlot * Number(slot.Ground.gstPercentage || 0)) /
+            100,
         status: "confirmed",
 
         razorpayOrderId: razorpay_order_id,

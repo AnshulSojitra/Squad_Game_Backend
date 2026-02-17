@@ -47,6 +47,7 @@ exports.createBooking = async (req, res) => {
               "pricePerSlot",
               "isBlocked",
               "advanceBookingDays",
+              "gstPercentage",
             ],
             include: [
               { model: City, as: "City", attributes: ["name"] },
@@ -113,7 +114,12 @@ exports.createBooking = async (req, res) => {
       if (alreadyBooked.length > 0) {
         throw new Error("One or more slots are already booked");
       }
+      const basePrice = Number(ground.pricePerSlot);
+      const gstPercent = Number(ground.gstPercentage || 0);
 
+      const gstAmount = gstPercent > 0 ? (basePrice * gstPercent) / 100 : 0;
+
+      const finalPrice = Math.round(basePrice + gstAmount);
       //  CREATE BOOKING SNAPSHOTS
       const bookingsData = slots.map((slot) => ({
         // RELATIONS
@@ -133,9 +139,8 @@ exports.createBooking = async (req, res) => {
         slotStartTime: slot.startTime,
         slotEndTime: slot.endTime,
 
-        pricePerSlotAtBooking: ground.pricePerSlot,
-        totalPrice: ground.pricePerSlot,
-
+        pricePerSlotAtBooking: basePrice,
+        totalPrice: finalPrice,
         date,
         status: "confirmed",
       }));

@@ -207,18 +207,20 @@ exports.verifyOtp = async (req, res) => {
     { expiresIn: "7d" },
   );
 
-  try {
-    if (user.email) {
-      sendEmail({
-        to: user.email,
-        subject: "Login Successful - BoxArena",
-        html: userLogin({ name: user.name }),
-      }).catch((err) => {
-        console.error("Login email failed:", err);
-      });
+  if (user.name) {
+    try {
+      if (user.email) {
+        sendEmail({
+          to: user.email,
+          subject: "Login Successful - BoxArena",
+          html: userLogin({ name: user.name }),
+        }).catch((err) => {
+          console.error("Login email failed:", err);
+        });
+      }
+    } catch (emailError) {
+      console.error("BOOKING EMAIL FAILED:", emailError.message);
     }
-  } catch (emailError) {
-    console.error("BOOKING EMAIL FAILED:", emailError.message);
   }
 
   res.json({
@@ -305,7 +307,11 @@ exports.completeProfile = async (req, res) => {
     sendEmail({
       to: user.email,
       subject: "Registration Successful - BoxArena",
-      html: userRegistration({ name: user.name }),
+      html: userRegistration({
+        name: user.name,
+        userEmail: user.email,
+        userPhone: user.phoneNumber,
+      }),
     }).catch((err) => {
       console.error("Registration email failed:", err);
     });

@@ -333,6 +333,12 @@ module.exports = {
           type: Sequelize.INTEGER,
           allowNull: false,
         },
+
+        gstPercentage: {
+          type: DataTypes.DECIMAL(5, 2),
+          defaultValue: 0,
+        },
+
         createdAt: {
           type: Sequelize.DATE,
           allowNull: false,

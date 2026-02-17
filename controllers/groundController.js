@@ -68,6 +68,7 @@ exports.createGround = async (req, res) => {
       game: req.body.game,
       openingTime: req.body.openingTime,
       closingTime: req.body.closingTime,
+      gstPercentage: req.body.gstPercentage,
       adminId: req.admin.id,
     });
 
@@ -108,7 +109,7 @@ exports.createGround = async (req, res) => {
   }
 };
 
-// * GET ALL GROUNDS (ADMIN)
+// * GET ALL GROUNDS
 
 exports.getAdminGrounds = async (req, res) => {
   try {
@@ -166,6 +167,7 @@ exports.getAdminGrounds = async (req, res) => {
       images: g.images,
       Slots: g.Slots,
       amenities: g.amenities,
+      gstPercentage: g.gstPercentage,
     }));
 
     res.json(formatted);
@@ -175,7 +177,7 @@ exports.getAdminGrounds = async (req, res) => {
   }
 };
 
-// * GET SINGLE GROUND (ADMIN - FOR EDIT)
+// * GET SINGLE GROUND
 
 exports.getAdminGroundById = async (req, res) => {
   try {
@@ -230,7 +232,7 @@ exports.getAdminGroundById = async (req, res) => {
   }
 };
 
-//* UPDATE GROUND (ADMIN)
+//* UPDATE GROUND
 
 exports.updateGround = async (req, res) => {
   try {
@@ -263,6 +265,7 @@ exports.updateGround = async (req, res) => {
       openingTime: req.body.openingTime,
       closingTime: req.body.closingTime,
       advanceBookingDays: req.body.advanceBookingDays,
+      gstPercentage: req.body.gstPercentage,
     });
 
     // If new images uploaded → replace old ones
@@ -352,7 +355,7 @@ exports.updateGround = async (req, res) => {
   }
 };
 
-//* DELETE GROUND (ADMIN)
+//* DELETE GROUND
 
 exports.deleteGround = async (req, res) => {
   try {
@@ -394,7 +397,7 @@ exports.deleteGround = async (req, res) => {
   }
 };
 
-// ADD GROUND IMAGES (ADMIN)
+// ADD GROUND IMAGES
 exports.addGroundImages = async (req, res) => {
   try {
     const ground = await Ground.findOne({
@@ -426,7 +429,7 @@ exports.addGroundImages = async (req, res) => {
   }
 };
 
-// DELETE GROUND IMAGE (ADMIN)
+// DELETE GROUND IMAGE
 exports.deleteGroundImage = async (req, res) => {
   try {
     const image = await GroundImage.findByPk(req.params.imageId);
@@ -632,6 +635,7 @@ exports.getPublicGroundById = async (req, res) => {
       advanceBookingDays: ground.advanceBookingDays,
       openingTime: ground.openingTime,
       closingTime: ground.closingTime,
+      gstPercentage: ground.gstPercentage,
       images: ground.images || [],
       amenities: ground.amenities || [],
       slots: slotsWithAvailability,
