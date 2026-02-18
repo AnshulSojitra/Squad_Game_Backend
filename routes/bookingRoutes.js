@@ -3,8 +3,6 @@ const router = express.Router();
 const bookingController = require("../controllers/bookingController");
 const userAuth = require("../middleware/userAuthMiddleware");
 
-router.post("/", userAuth, bookingController.createBooking);
-
 router.put("/:id/cancel", userAuth, bookingController.cancelBooking);
 
 router.post("/cancel", userAuth, bookingController.cancelMultipleBookings);

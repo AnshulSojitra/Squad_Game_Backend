@@ -701,7 +701,7 @@ exports.getGroundReviews = async (req, res) => {
 
   const reviews = await Review.findAll({
     where: { groundId },
-    attributes: { exclude: ["updatedAt", "createdAt", "userId", "groundId"] },
+    attributes: { exclude: ["updatedAt", "userId", "groundId"] },
     include: [
       {
         model: User,

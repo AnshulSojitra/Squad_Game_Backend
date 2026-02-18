@@ -13,6 +13,9 @@ const { Op } = require("sequelize");
 const crypto = require("crypto");
 const { sendEmail } = require("../utils/email");
 const bookingConfirmation = require("../utils/templates/bookingConfirmation");
+const generateInvoice = require("../utils/generateInvoice");
+const fs = require("fs");
+const path = require("path");
 
 exports.createRazorpayOrder = async (req, res) => {
   try {
@@ -44,7 +47,7 @@ exports.createRazorpayOrder = async (req, res) => {
       });
     }
 
-    // Fetch slots + ground (added gstPercentage)
+    // Fetch slots + ground
     const slots = await Slot.findAll({
       where: {
         id: { [Op.in]: slotIds },
@@ -57,7 +60,7 @@ exports.createRazorpayOrder = async (req, res) => {
           "pricePerSlot",
           "isBlocked",
           "advanceBookingDays",
-          "gstPercentage", // ✅ Added
+          "gstPercentage",
         ],
       },
     });
@@ -105,7 +108,7 @@ exports.createRazorpayOrder = async (req, res) => {
       });
     }
 
-    /* ================== GST CALCULATION ================== */
+    /*  GST CALCULATION  */
 
     let baseAmount = 0;
     let gstAmount = 0;
@@ -124,7 +127,7 @@ exports.createRazorpayOrder = async (req, res) => {
     gstAmount = Math.round(gstAmount); // round to nearest rupee
     const totalAmount = baseAmount + gstAmount;
 
-    /* ================== CREATE RAZORPAY ORDER ================== */
+    /* CREATE RAZORPAY ORDER  */
 
     const order = await razorpay.orders.create({
       amount: totalAmount * 100, // paise
@@ -143,11 +146,10 @@ exports.createRazorpayOrder = async (req, res) => {
 
     res.status(200).json({
       orderId: order.id,
-      amount: totalAmount, // send final amount to frontend
+      amount: totalAmount,
       currency: "INR",
       key: process.env.RAZORPAY_KEY_ID,
 
-      // optional: send breakup for UI display
       baseAmount,
       gstAmount,
       gstPercentage,
@@ -208,10 +210,9 @@ exports.verifyRazorpayPayment = async (req, res) => {
       });
     }
 
-    // TRUST ONLY ORDER NOTES
     const slotIds = order.notes.slots.split(",").map((id) => Number(id));
 
-    const bookingDate = order.notes.date; // "YYYY-MM-DD"
+    const bookingDate = order.notes.date;
 
     /* CREATE BOOKING */
 
@@ -306,19 +307,48 @@ exports.verifyRazorpayPayment = async (req, res) => {
       }));
 
       await Booking.bulkCreate(bookingsData, { transaction: t });
+
+      //Email
       try {
         const user = await User.findByPk(req.user.id);
 
         slots.sort((a, b) => a.startTime.localeCompare(b.startTime));
 
+        const slotDetails = slots.map((slot) => ({
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+        }));
+
         const slotTimes = slots.map(
           (slot) => `${slot.startTime} - ${slot.endTime}`,
         );
 
-        const totalPrice = slots.reduce(
-          (sum, slot) => sum + slot.Ground.pricePerSlot,
-          0,
-        );
+        const totalPrice = slots.reduce((sum, slot) => {
+          const basePrice = Number(slot.Ground.pricePerSlot);
+          const gstPercent = Number(slot.Ground.gstPercentage || 0);
+
+          const gstAmount = gstPercent > 0 ? (basePrice * gstPercent) / 100 : 0;
+
+          return sum + Math.round(basePrice + gstAmount);
+        }, 0);
+        const bookings = await Booking.findAll({
+          where: {
+            userId: req.user.id,
+            date: bookingDate,
+          },
+        });
+        if (!fs.existsSync(path.join(__dirname, "../invoices"))) {
+          fs.mkdirSync(path.join(__dirname, "../invoices"));
+        }
+
+        const invoicePath = await generateInvoice({
+          bookingId: Date.now(),
+          user,
+          groundName: slots[0].Ground.name,
+          date: bookingDate,
+          slots: slotDetails,
+          pricePerSlot: slots[0].Ground.pricePerSlot,
+        });
 
         await sendEmail({
           to: user.email,
@@ -332,6 +362,12 @@ exports.verifyRazorpayPayment = async (req, res) => {
             price: totalPrice,
             slots: slotTimes,
           }),
+          attachments: [
+            {
+              filename: "invoice.pdf",
+              path: invoicePath,
+            },
+          ],
         });
       } catch (emailError) {
         console.error("BOOKING EMAIL FAILED:", emailError.message);
