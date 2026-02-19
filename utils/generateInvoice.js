@@ -22,25 +22,26 @@ const generateInvoice = ({
         return `${hour}:${minute} ${period}`;
       };
 
-      const invoicePath = path.join(
-        __dirname,
-        `../invoices/invoice-${bookingId}.pdf`,
-      );
+      const invoiceDir = path.join(__dirname, "../invoices");
+      if (!fs.existsSync(invoiceDir)) {
+        fs.mkdirSync(invoiceDir);
+      }
+
+      const invoicePath = path.join(invoiceDir, `invoice-${bookingId}.pdf`);
 
       const doc = new PDFDocument({ margin: 50 });
       const stream = fs.createWriteStream(invoicePath);
       doc.pipe(stream);
 
       // HEADER
-
-      doc.fontSize(24).fillColor("#111827").text("BoxArena", { align: "left" });
+      doc.fontSize(24).fillColor("#111827").text("BoxArena");
 
       doc
         .fontSize(10)
         .fillColor("#6b7280")
         .text("Sports Ground Booking Platform");
 
-      doc.moveDown(1);
+      doc.moveDown();
 
       doc.fontSize(18).fillColor("#111827").text("INVOICE", { align: "right" });
 
@@ -48,12 +49,13 @@ const generateInvoice = ({
         .fontSize(10)
         .fillColor("#6b7280")
         .text(`Invoice No: BA-${bookingId}`, { align: "right" })
-        .text(`Date: ${new Date().toLocaleDateString()}`, { align: "right" });
+        .text(`Date: ${new Date().toLocaleDateString()}`, {
+          align: "right",
+        });
 
       doc.moveDown(2);
 
-      // BILL TO SECTION
-
+      // BILL TO
       doc
         .fontSize(12)
         .fillColor("#111827")
@@ -69,8 +71,7 @@ const generateInvoice = ({
 
       doc.moveDown(2);
 
-      // BOOKING DETAILS
-
+      // BOOKING INFO
       doc
         .fontSize(12)
         .fillColor("#111827")
@@ -84,80 +85,85 @@ const generateInvoice = ({
         .text(`Ground: ${groundName}`)
         .text(`Booking Date: ${date}`);
 
-      doc.moveDown(1.5);
+      doc.moveDown(2);
 
-      // TABLE HEADER
+      // TABLE
+
+      const tableLeft = 50;
+      const tableWidth = 500;
+      const rowHeight = 25;
+
+      let y = doc.y;
+
+      // Header background
+      doc.rect(tableLeft, y, tableWidth, rowHeight).fill("#f3f4f6");
 
       doc
-        .fontSize(12)
         .fillColor("#111827")
-        .text("Slot", 50)
-        .text("Time", 200)
-        .text("Price", 450);
+        .fontSize(12)
+        .text("No.", tableLeft + 10, y + 7)
+        .text("Time Slot", tableLeft + 70, y + 7)
+        .text("Price", tableLeft + 350, y + 7)
+        .text("Amount", tableLeft + 430, y + 7);
 
-      doc
-        .moveTo(50, doc.y + 5)
-        .lineTo(550, doc.y + 5)
-        .strokeColor("#d1d5db")
-        .stroke();
-
-      doc.moveDown();
+      y += rowHeight;
 
       let subtotal = 0;
 
+      // Rows
       slots.forEach((slot, index) => {
-        const y = doc.y;
+        const slotTime = `${to12Hour(
+          slot.startTime,
+        )} - ${to12Hour(slot.endTime)}`;
+
+        doc.rect(tableLeft, y, tableWidth, rowHeight).stroke("#e5e7eb");
 
         doc
-          .fontSize(11)
           .fillColor("#374151")
-          .text(`${index + 1}`, 50, y)
-          .text(
-            `${to12Hour(slot.startTime)} - ${to12Hour(slot.endTime)}`,
-            200,
-            y,
-          )
-          .text(`Rs.${pricePerSlot}`, 450, y);
+          .fontSize(11)
+          .text(index + 1, tableLeft + 10, y + 7)
+          .text(slotTime, tableLeft + 70, y + 7)
+          .text(`Rs.${pricePerSlot}`, tableLeft + 350, y + 7)
+          .text(`Rs.${pricePerSlot}`, tableLeft + 430, y + 7);
 
         subtotal += pricePerSlot;
-        doc.moveDown();
+        y += rowHeight;
       });
 
-      doc.moveDown();
+      doc.moveDown(3);
 
-      // TOTALS SECTION
+      // TOTALS
 
       const gstAmount = (subtotal * gstPercentage) / 100;
       const total = subtotal + gstAmount;
 
-      doc.moveDown();
-      doc.moveTo(300, doc.y).lineTo(550, doc.y).strokeColor("#d1d5db").stroke();
-      doc.moveDown();
+      const totalsX = 330;
+      let totalsY = y + 10;
 
-      // Right aligned numbers
       doc
         .fontSize(11)
         .fillColor("#374151")
-        .text(`Subtotal: Rs.${subtotal.toFixed(2)}`, { align: "right" })
-        .text(`GST (${gstPercentage}%): Rs.${gstAmount.toFixed(2)}`, {
-          align: "right",
-        });
+        .text("Subtotal:", totalsX, totalsY)
+        .text(`Rs.${subtotal.toFixed(2)}`, totalsX + 120, totalsY);
 
-      doc.moveDown(0.8);
+      totalsY += 20;
 
-      // Save Y position
-      const totalY = doc.y;
+      doc
+        .text(`GST (${gstPercentage}%):`, totalsX, totalsY)
+        .text(`Rs.${gstAmount.toFixed(2)}`, totalsX + 120, totalsY);
 
-      // Draw background box properly
-      doc.rect(300, totalY - 5, 250, 30).fill("#ecfdf5");
+      totalsY += 30;
 
-      // Write total inside box
+      // Total highlight box
+      doc.rect(totalsX - 10, totalsY - 5, 210, 30).fill("#ecfdf5");
+
       doc
         .fillColor("#065f46")
         .fontSize(13)
-        .text(`Total Payable: Rs.${total.toFixed(2)}`, 310, totalY + 3);
+        .text("Total Payable:", totalsX, totalsY + 5)
+        .text(`Rs.${total.toFixed(2)}`, totalsX + 120, totalsY + 5);
 
-      doc.moveDown(3);
+      doc.moveDown(4);
 
       // FOOTER
 

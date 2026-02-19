@@ -213,7 +213,7 @@ exports.verifyOtp = async (req, res) => {
         sendEmail({
           to: user.email,
           subject: "Login Successful - BoxArena",
-          html: userLogin({ name: user.name }),
+          html: userLogin({ userName: user.name, userEmail: user.email }),
         }).catch((err) => {
           console.error("Login email failed:", err);
         });

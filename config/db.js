@@ -28,6 +28,7 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     dialect: "mysql",
+
     dialectOptions: {
       ssl: {
         ca: fs.readFileSync("D:/Workspace/MernStack/ca.pem"),
