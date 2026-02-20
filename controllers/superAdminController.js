@@ -847,7 +847,7 @@ exports.getSuperAdminDashboard = async (req, res) => {
             "revenue",
           ],
         ],
-        where: { status: "CONFIRMED" },
+        where: { status: "confirmed" },
         raw: true,
       }),
     ]);
@@ -875,7 +875,7 @@ exports.getSuperAdminDashboard = async (req, res) => {
             ],
           ],
           where: {
-            status: "CONFIRMED",
+            status: "confirmed",
             date: { [Op.between]: [todayStart, todayEnd] },
           },
           raw: true,
@@ -910,7 +910,7 @@ exports.getSuperAdminDashboard = async (req, res) => {
           "revenue",
         ],
       ],
-      where: { status: "CONFIRMED" },
+      where: { status: "confirmed" },
       include: [
         {
           model: Slot,

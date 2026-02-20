@@ -104,7 +104,7 @@ const generateInvoice = ({
         .text("No.", tableLeft + 10, y + 7)
         .text("Time Slot", tableLeft + 70, y + 7)
         .text("Price", tableLeft + 350, y + 7)
-        .text("Amount", tableLeft + 430, y + 7);
+        .text("Net Price", tableLeft + 430, y + 7);
 
       y += rowHeight;
 
@@ -117,14 +117,15 @@ const generateInvoice = ({
         )} - ${to12Hour(slot.endTime)}`;
 
         doc.rect(tableLeft, y, tableWidth, rowHeight).stroke("#e5e7eb");
-
+        const gsAmount = pricePerSlot + (pricePerSlot * gstPercentage) / 100;
         doc
           .fillColor("#374151")
           .fontSize(11)
           .text(index + 1, tableLeft + 10, y + 7)
           .text(slotTime, tableLeft + 70, y + 7)
           .text(`Rs.${pricePerSlot}`, tableLeft + 350, y + 7)
-          .text(`Rs.${pricePerSlot}`, tableLeft + 430, y + 7);
+
+          .text(`Rs.${gsAmount}`, tableLeft + 430, y + 7);
 
         subtotal += pricePerSlot;
         y += rowHeight;
