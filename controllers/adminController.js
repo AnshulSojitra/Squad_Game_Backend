@@ -498,3 +498,53 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ message: "Failed to reset password" });
   }
 };
+
+exports.renewSubscription = async (req, res) => {
+  try {
+    const adminId = req.admin.id;
+
+    const admin = await Admin.findByPk(adminId);
+
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    if (admin.planType !== "subscription") {
+      return res.status(400).json({
+        message: "Only subscription plan admins can renew subscription",
+      });
+    }
+
+    const today = new Date();
+    let newStartDate;
+    let newEndDate;
+
+    // If subscription still active → extend from existing end date
+    if (admin.subscriptionEndDate && admin.subscriptionEndDate > today) {
+      newStartDate = admin.subscriptionStartDate;
+      newEndDate = new Date(admin.subscriptionEndDate);
+      newEndDate.setMonth(newEndDate.getMonth() + 1);
+    } else {
+      // If expired → start from today
+      newStartDate = today;
+      newEndDate = new Date();
+      newEndDate.setMonth(today.getMonth() + 1);
+    }
+
+    admin.subscriptionStartDate = newStartDate;
+    admin.subscriptionEndDate = newEndDate;
+
+    await admin.save();
+
+    res.status(200).json({
+      message: "Subscription renewed successfully",
+      subscriptionStartDate: admin.subscriptionStartDate,
+      subscriptionEndDate: admin.subscriptionEndDate,
+    });
+  } catch (error) {
+    console.error("RENEW SUBSCRIPTION ERROR:", error);
+    res.status(500).json({
+      message: "Failed to renew subscription",
+    });
+  }
+};

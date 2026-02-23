@@ -190,12 +190,18 @@ exports.deleteUser = async (req, res) => {
 
 exports.createAdmin = async (req, res) => {
   try {
-    const { name, email, phoneNumber, password } = req.body;
+    const { name, email, phoneNumber, password, planType } = req.body;
 
     // validation
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !planType) {
       return res.status(400).json({
-        message: "Name, email and password are required",
+        message: "Name, email, password and planType are required",
+      });
+    }
+
+    if (!["subscription", "commission"].includes(planType)) {
+      return res.status(400).json({
+        message: "Invalid plan type",
       });
     }
 
@@ -213,6 +219,18 @@ exports.createAdmin = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Subscription logic
+    let subscriptionStartDate = null;
+    let subscriptionEndDate = null;
+
+    if (planType === "subscription") {
+      subscriptionStartDate = new Date();
+
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + 1);
+      subscriptionEndDate = endDate;
+    }
+
     //  Create admin
     const admin = await Admin.create({
       name,
@@ -220,21 +238,28 @@ exports.createAdmin = async (req, res) => {
       password: hashedPassword,
       phoneNumber,
       isBlocked: false,
+      planType,
+      subscriptionStartDate,
+      subscriptionEndDate,
     });
 
+    // Send email (keeping your existing logic intact)
     try {
-      const admin = await Admin.findOne({ where: { email } });
+      const createdAdmin = await Admin.findOne({ where: { email } });
+
       await sendEmail({
-        to: admin.email,
+        to: createdAdmin.email,
         subject: "Your Admin Account is Created 🎉",
         html: adminRegistration({
-          adminName: admin.name,
-          adminEmail: admin.email,
-          adminPhone: admin.phoneNumber,
+          adminName: createdAdmin.name,
+          adminEmail: createdAdmin.email,
+          adminPhone: createdAdmin.phoneNumber,
+          planType: createdAdmin.planType,
+          subscriptionEndDate: createdAdmin.subscriptionEndDate,
         }),
       });
     } catch (emailError) {
-      console.error("BOOKING EMAIL FAILED:", emailError.message);
+      console.error("ADMIN EMAIL FAILED:", emailError.message);
     }
 
     res.status(201).json({
@@ -244,6 +269,8 @@ exports.createAdmin = async (req, res) => {
         name: admin.name,
         email: admin.email,
         phoneNumber: admin.phoneNumber,
+        planType: admin.planType,
+        subscriptionEndDate: admin.subscriptionEndDate,
       },
     });
   } catch (error) {
@@ -813,7 +840,7 @@ exports.deleteGround = async (req, res) => {
 
 exports.getSuperAdminDashboard = async (req, res) => {
   try {
-    /*  DATE RANGES  */
+    /* DATE RANGES*/
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -821,7 +848,7 @@ exports.getSuperAdminDashboard = async (req, res) => {
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
-    /*  PLATFORM TOTALS  */
+    /* PLATFORM TOTALS */
 
     const [
       totalUsers,
@@ -829,74 +856,92 @@ exports.getSuperAdminDashboard = async (req, res) => {
       totalGrounds,
       activeGrounds,
       totalBookings,
-      totalRevenueResult,
     ] = await Promise.all([
       User.count(),
       Admin.count(),
       Ground.count(),
       Ground.count({ where: { isBlocked: false } }),
       Booking.count(),
-      Booking.findOne({
-        attributes: [
-          [
-            sequelize.fn(
-              "COALESCE",
-              sequelize.fn("SUM", sequelize.col("totalPrice")),
-              0,
-            ),
-            "revenue",
-          ],
-        ],
-        where: { status: "confirmed" },
-        raw: true,
+    ]);
+
+    // Fetch all confirmed/completed bookings
+    const bookingsForRevenue = await Booking.findAll({
+      attributes: ["totalPrice"],
+      where: {
+        status: { [Op.in]: ["confirmed", "completed"] },
+      },
+      include: [
+        {
+          model: Admin,
+          attributes: ["planType"],
+          required: true,
+        },
+      ],
+      raw: true,
+    });
+
+    let totalRevenue = 0;
+    let totalCommissionReceived = 0;
+
+    bookingsForRevenue.forEach((b) => {
+      const amount = Number(b.totalPrice || 0);
+      totalRevenue += amount;
+
+      if (b["Admin.planType"] === "commission") {
+        totalCommissionReceived += (amount * 10) / 100;
+      }
+    });
+
+    /* TODAY STATS */
+
+    const [bookingsToday, newUsersToday, newGroundsToday] = await Promise.all([
+      Booking.count({
+        where: {
+          date: { [Op.between]: [todayStart, todayEnd] },
+        },
+      }),
+      User.count({
+        where: {
+          createdAt: { [Op.between]: [todayStart, todayEnd] },
+        },
+      }),
+      Ground.count({
+        where: {
+          createdAt: { [Op.between]: [todayStart, todayEnd] },
+        },
       }),
     ]);
 
-    const totalRevenue = Number(totalRevenueResult.revenue || 0);
+    const todayBookings = await Booking.findAll({
+      attributes: ["totalPrice"],
+      where: {
+        status: { [Op.in]: ["confirmed", "completed"] },
+        createdAt: { [Op.between]: [todayStart, todayEnd] },
+      },
+      include: [
+        {
+          model: Admin,
+          attributes: ["planType"],
+          required: true,
+        },
+      ],
+      raw: true,
+    });
 
-    /*  TODAY STATS  */
+    let revenueToday = 0;
+    let commissionToday = 0;
 
-    const [bookingsToday, revenueTodayResult, newUsersToday, newGroundsToday] =
-      await Promise.all([
-        Booking.count({
-          where: {
-            date: { [Op.between]: [todayStart, todayEnd] },
-          },
-        }),
-        Booking.findOne({
-          attributes: [
-            [
-              sequelize.fn(
-                "COALESCE",
-                sequelize.fn("SUM", sequelize.col("totalPrice")),
-                0,
-              ),
-              "revenue",
-            ],
-          ],
-          where: {
-            status: "confirmed",
-            date: { [Op.between]: [todayStart, todayEnd] },
-          },
-          raw: true,
-        }),
-        User.count({
-          where: {
-            createdAt: { [Op.between]: [todayStart, todayEnd] },
-          },
-        }),
-        Ground.count({
-          where: {
-            createdAt: { [Op.between]: [todayStart, todayEnd] },
-          },
-        }),
-      ]);
+    todayBookings.forEach((b) => {
+      const amount = Number(b.totalPrice || 0);
+      revenueToday += amount;
 
-    const revenueToday = Number(revenueTodayResult.revenue || 0);
+      if (b["Admin.planType"] === "commission") {
+        commissionToday += (amount * 10) / 100;
+      }
+    });
 
-    /*  TOP GROUNDS   */
+    /* TOP GROUNDS */
 
-    //  Aggregate from Bookings
     const bookingStats = await Booking.findAll({
       attributes: [
         [sequelize.col("Slot.Ground.id"), "groundId"],
@@ -910,7 +955,9 @@ exports.getSuperAdminDashboard = async (req, res) => {
           "revenue",
         ],
       ],
-      where: { status: "confirmed" },
+      where: {
+        status: { [Op.in]: ["confirmed", "completed"] },
+      },
       include: [
         {
           model: Slot,
@@ -936,9 +983,8 @@ exports.getSuperAdminDashboard = async (req, res) => {
       raw: true,
     });
 
-    // Fetch all grounds
     const allGrounds = await Ground.findAll({
-      attributes: ["id", "name", "city"],
+      attributes: ["id", "name"],
       include: [
         {
           model: City,
@@ -949,7 +995,6 @@ exports.getSuperAdminDashboard = async (req, res) => {
       raw: true,
     });
 
-    //  Merge → include zero-booking grounds
     const statsMap = {};
     bookingStats.forEach((s) => {
       statsMap[s.groundId] = s;
@@ -958,16 +1003,15 @@ exports.getSuperAdminDashboard = async (req, res) => {
     const groundPerformance = allGrounds.map((g) => ({
       groundId: g.id,
       groundName: g.name,
-      city: g.City,
+      city: g["City.name"] || null,
       bookings: Number(statsMap[g.id]?.bookings || 0),
       revenue: Number(statsMap[g.id]?.revenue || 0),
     }));
 
-    //  Sort & take top 5
     groundPerformance.sort((a, b) => b.revenue - a.revenue);
     const topGrounds = groundPerformance.slice(0, 5);
 
-    /*  ALERTS  */
+    /* ALERTS */
 
     const groundsWithZeroBookings = groundPerformance.filter(
       (g) => g.bookings === 0,
@@ -981,7 +1025,7 @@ exports.getSuperAdminDashboard = async (req, res) => {
       },
     });
 
-    /*  RESPONSE  */
+    /* RESPONSE */
 
     res.json({
       platformStats: {
@@ -992,10 +1036,12 @@ exports.getSuperAdminDashboard = async (req, res) => {
         inactiveGrounds: totalGrounds - activeGrounds,
         totalBookings,
         totalRevenue,
+        totalCommissionReceived,
       },
       todayStats: {
         bookingsToday,
         revenueToday,
+        commissionToday,
         newUsersToday,
         newGroundsToday,
       },

@@ -34,6 +34,20 @@ const Admin = sequelize.define(
     resetPasswordOtpExpires: {
       type: DataTypes.DATE,
     },
+    planType: {
+      type: DataTypes.ENUM("subscription", "commission"),
+      allowNull: false,
+    },
+
+    subscriptionStartDate: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+
+    subscriptionEndDate: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     tableName: "admins",

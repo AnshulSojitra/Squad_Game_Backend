@@ -71,6 +71,20 @@ module.exports = {
         resetPasswordOtpExpires: {
           type: Sequelize.DATE,
         },
+        planType: {
+          type: Sequelize.ENUM("subscription", "commission"),
+          allowNull: false,
+        },
+
+        subscriptionStartDate: {
+          type: Sequelize.DATE,
+          allowNull: true,
+        },
+
+        subscriptionEndDate: {
+          type: Sequelize.DATE,
+          allowNull: true,
+        },
         createdAt: {
           type: Sequelize.DATE,
           allowNull: false,
