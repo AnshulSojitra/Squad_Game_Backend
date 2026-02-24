@@ -268,9 +268,8 @@ exports.updateGround = async (req, res) => {
       gstPercentage: req.body.gstPercentage,
     });
 
-    // If new images uploaded → replace old ones
+    // Replace images if new ones uploaded
     if (req.files && req.files.length > 0) {
-      //  Delete old image files
       for (const img of ground.images) {
         const filePath = path.join(__dirname, "..", img.imageUrl);
         if (fs.existsSync(filePath)) {
@@ -278,12 +277,10 @@ exports.updateGround = async (req, res) => {
         }
       }
 
-      //  Delete old DB records
       await GroundImage.destroy({
         where: { groundId: ground.id },
       });
 
-      //  Insert new images
       const newImages = req.files.map((file) => ({
         groundId: ground.id,
         imageUrl: `/uploads/${file.filename}`,
@@ -292,7 +289,7 @@ exports.updateGround = async (req, res) => {
       await GroundImage.bulkCreate(newImages);
     }
 
-    //  Update amenities
+    // Update amenities
     let amenities = [];
 
     if (req.body.amenities) {
@@ -304,6 +301,7 @@ exports.updateGround = async (req, res) => {
         });
       }
     }
+
     if (amenities.length > 0) {
       await Amenity.destroy({
         where: { groundId: ground.id },
@@ -332,17 +330,46 @@ exports.updateGround = async (req, res) => {
     }
 
     if (slots.length > 0) {
-      await Slot.destroy({
+      // Get existing slots
+      const existingSlots = await Slot.findAll({
         where: { groundId: ground.id },
+        attributes: ["startTime", "endTime"],
+        raw: true,
       });
 
-      const slotsData = slots.map((slot) => ({
-        groundId: ground.id,
-        startTime: slot.start || slot.startTime,
-        endTime: slot.end || slot.endTime,
+      const formattedExisting = existingSlots.map((s) => ({
+        start: s.startTime,
+        end: s.endTime,
       }));
 
-      await Slot.bulkCreate(slotsData);
+      const slotsChanged =
+        JSON.stringify(formattedExisting.sort()) !==
+        JSON.stringify(slots.sort((a, b) => a.start.localeCompare(b.start)));
+
+      if (slotsChanged) {
+        const existingBookings = await Booking.count({
+          where: { groundId: ground.id },
+        });
+
+        if (existingBookings > 0) {
+          return res.status(400).json({
+            message:
+              "Cannot modify slots because bookings already exist for this ground",
+          });
+        }
+
+        await Slot.destroy({
+          where: { groundId: ground.id },
+        });
+
+        const slotsData = slots.map((slot) => ({
+          groundId: ground.id,
+          startTime: slot.start || slot.startTime,
+          endTime: slot.end || slot.endTime,
+        }));
+
+        await Slot.bulkCreate(slotsData);
+      }
     }
 
     res.json({
