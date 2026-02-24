@@ -378,7 +378,7 @@ exports.updateGround = async (req, res) => {
     });
   } catch (error) {
     console.error("UPDATE GROUND ERROR:", error);
-    res.status(500).json({ message: "Failed to update ground" });
+    res.status(500).json({ message: "Failed to update" });
   }
 };
 
