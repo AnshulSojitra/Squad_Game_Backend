@@ -14,6 +14,10 @@ const City = require("./City");
 const Amenity = require("./Amenity");
 const SuperAdmin = require("./SuperAdmin");
 const Review = require("./Review");
+const Game = require("./Game");
+const GameTeam = require("./GameTeam");
+const GameParticipant = require("./GameParticipant");
+const GameSlot = require("./GameSlot");
 
 /* RELATIONS  */
 
@@ -141,6 +145,33 @@ Booking.belongsTo(Ground, {
   foreignKey: "groundId",
 });
 
+// Game relations
+Game.belongsTo(User, { foreignKey: "createdBy" });
+User.hasMany(Game, { foreignKey: "createdBy" });
+
+Game.belongsTo(Ground, { foreignKey: "groundId" });
+Ground.hasMany(Game, { foreignKey: "groundId" });
+
+// Teams
+Game.hasMany(GameTeam, { foreignKey: "gameId", onDelete: "CASCADE" });
+GameTeam.belongsTo(Game, { foreignKey: "gameId" });
+
+// Participants
+Game.hasMany(GameParticipant, { foreignKey: "gameId", onDelete: "CASCADE" });
+GameParticipant.belongsTo(Game, { foreignKey: "gameId" });
+
+GameParticipant.belongsTo(User, { foreignKey: "userId" });
+User.hasMany(GameParticipant, { foreignKey: "userId" });
+
+GameParticipant.belongsTo(GameTeam, { foreignKey: "teamId" });
+GameTeam.hasMany(GameParticipant, { foreignKey: "teamId" });
+
+Game.hasMany(GameSlot, { foreignKey: "gameId", onDelete: "CASCADE" });
+GameSlot.belongsTo(Game, { foreignKey: "gameId" });
+
+Slot.hasMany(GameSlot, { foreignKey: "slotId", onDelete: "CASCADE" });
+GameSlot.belongsTo(Slot, { foreignKey: "slotId" });
+
 /* EXPORT  */
 
 module.exports = {
@@ -157,4 +188,8 @@ module.exports = {
   Amenity,
   SuperAdmin,
   Review,
+  Game,
+  GameTeam,
+  GameParticipant,
+  GameSlot,
 };

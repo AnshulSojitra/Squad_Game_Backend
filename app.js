@@ -16,6 +16,7 @@ const bookingRoutes = require("./routes/bookingRoutes");
 const adminBookingRoutes = require("./routes/adminBookingRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
+const gameRoutes = require("./routes/gameRoutes");
 const autoCompleteBookings = require("./cron/autoCompleteBookings");
 
 // Ensure uploads folder exists
@@ -67,5 +68,7 @@ app.use("/api/admin/bookings", adminBookingRoutes);
 app.use("/api", reviewRoutes);
 
 app.use("/api/payments", paymentRoutes);
+
+app.use("/api", gameRoutes);
 
 module.exports = app;

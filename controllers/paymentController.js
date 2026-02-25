@@ -8,6 +8,10 @@ const {
   State,
   Country,
   User,
+  Game,
+  GameTeam,
+  GameParticipant,
+  GameSlot,
 } = require("../models");
 const { Op } = require("sequelize");
 const crypto = require("crypto");
@@ -19,7 +23,7 @@ const path = require("path");
 
 exports.createRazorpayOrder = async (req, res) => {
   try {
-    const { slotIds, date } = req.body;
+    const { slotIds, date, type } = req.body;
 
     if (!Array.isArray(slotIds) || slotIds.length === 0) {
       return res.status(400).json({
@@ -134,10 +138,15 @@ exports.createRazorpayOrder = async (req, res) => {
       currency: "INR",
       receipt: `rcpt_${Date.now()}`,
       notes: {
+        type: type || "booking",
         userId: req.user.id,
         groundId: ground.id,
         date: req.body.date,
         slots: slotIds.join(","),
+        sport: req.body.sport || null,
+        totalTeams: req.body.totalTeams || null,
+        playersPerTeam: req.body.playersPerTeam || null,
+        pricePerPlayer: req.body.pricePerPlayer || null,
         baseAmount,
         gstAmount,
         gstPercentage,
@@ -210,18 +219,15 @@ exports.verifyRazorpayPayment = async (req, res) => {
       });
     }
 
-    const slotIds = order.notes.slots.split(",").map((id) => Number(id));
+    const type = order.notes.type || "booking";
 
+    const slotIds = order.notes.slots.split(",").map((id) => Number(id));
     const bookingDate = order.notes.date;
 
-    /* CREATE BOOKING */
-
     await sequelize.transaction(async (t) => {
-      // Fetch slots with ground
+      /* FETCH SLOTS */
       const slots = await Slot.findAll({
-        where: {
-          id: slotIds,
-        },
+        where: { id: slotIds },
         include: [
           {
             model: Ground,
@@ -258,7 +264,6 @@ exports.verifyRazorpayPayment = async (req, res) => {
         throw new Error("Ground is blocked");
       }
 
-      // Check already booked
       const alreadyBooked = await Booking.findAll({
         where: {
           slotId: slotIds,
@@ -272,7 +277,8 @@ exports.verifyRazorpayPayment = async (req, res) => {
         throw new Error("One or more slots already booked");
       }
 
-      // Create booking snapshots
+      /* CREATE BOOKING SNAPSHOTS */
+
       const bookingsData = slots.map((slot) => ({
         userId: req.user.id,
         cityId: slot.Ground.cityId,
@@ -299,8 +305,8 @@ exports.verifyRazorpayPayment = async (req, res) => {
           slot.Ground.pricePerSlot +
           (slot.Ground.pricePerSlot * Number(slot.Ground.gstPercentage || 0)) /
             100,
-        status: "confirmed",
 
+        status: "confirmed",
         razorpayOrderId: razorpay_order_id,
         razorpayPaymentId: razorpay_payment_id,
         paymentStatus: "paid",
@@ -308,7 +314,60 @@ exports.verifyRazorpayPayment = async (req, res) => {
 
       await Booking.bulkCreate(bookingsData, { transaction: t });
 
-      //Email
+      /* GAME CREATION BLOCK */
+
+      if (type === "game") {
+        const game = await Game.create(
+          {
+            sport: order.notes.sport,
+            groundId: order.notes.groundId,
+            date: bookingDate,
+            totalTeams: Number(order.notes.totalTeams),
+            playersPerTeam: Number(order.notes.playersPerTeam),
+            totalPlayers:
+              Number(order.notes.totalTeams) *
+              Number(order.notes.playersPerTeam),
+            joinedPlayersCount: 1,
+            pricePerPlayer: Number(order.notes.pricePerPlayer),
+            status: "open",
+            createdBy: req.user.id,
+          },
+          { transaction: t },
+        );
+
+        // Create GameSlots
+        for (const id of slotIds) {
+          await GameSlot.create(
+            {
+              gameId: game.id,
+              slotId: id,
+            },
+            { transaction: t },
+          );
+        }
+
+        // Create Teams
+        for (let i = 1; i <= Number(order.notes.totalTeams); i++) {
+          await GameTeam.create(
+            {
+              gameId: game.id,
+              teamNumber: i,
+            },
+            { transaction: t },
+          );
+        }
+
+        // Add Creator as Participant
+        await GameParticipant.create(
+          {
+            gameId: game.id,
+            userId: req.user.id,
+          },
+          { transaction: t },
+        );
+      }
+
+      /* EMAIL */
       try {
         const user = await User.findByPk(req.user.id);
 
@@ -326,17 +385,10 @@ exports.verifyRazorpayPayment = async (req, res) => {
         const totalPrice = slots.reduce((sum, slot) => {
           const basePrice = Number(slot.Ground.pricePerSlot);
           const gstPercent = Number(slot.Ground.gstPercentage || 0);
-
           const gstAmount = gstPercent > 0 ? (basePrice * gstPercent) / 100 : 0;
-
           return sum + Math.round(basePrice + gstAmount);
         }, 0);
-        const bookings = await Booking.findAll({
-          where: {
-            userId: req.user.id,
-            date: bookingDate,
-          },
-        });
+
         if (!fs.existsSync(path.join(__dirname, "../invoices"))) {
           fs.mkdirSync(path.join(__dirname, "../invoices"));
         }
@@ -352,7 +404,10 @@ exports.verifyRazorpayPayment = async (req, res) => {
 
         await sendEmail({
           to: user.email,
-          subject: "Your Booking is Confirmed 🎉",
+          subject:
+            type === "game"
+              ? "Your Game is Created 🎉"
+              : "Your Booking is Confirmed 🎉",
           html: bookingConfirmation({
             userName: user.name,
             groundName: slots[0].Ground.name,
@@ -375,7 +430,10 @@ exports.verifyRazorpayPayment = async (req, res) => {
     });
 
     res.json({
-      message: "Payment verified & booking confirmed",
+      message:
+        type === "game"
+          ? "Payment verified & game created"
+          : "Payment verified & booking confirmed",
     });
   } catch (error) {
     console.error("VERIFY PAYMENT ERROR:", error.message);
