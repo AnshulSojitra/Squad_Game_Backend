@@ -609,9 +609,90 @@ module.exports = {
         timestamps: true,
       },
     );
+
+    /* GAMES */
+    await queryInterface.createTable("games", {
+      id: { type: Sequelize.INTEGER, autoIncrement: true, primaryKey: true },
+      sport: Sequelize.STRING,
+      date: Sequelize.DATEONLY,
+      totalTeams: Sequelize.INTEGER,
+      playersPerTeam: Sequelize.INTEGER,
+      totalPlayers: Sequelize.INTEGER,
+      joinedPlayersCount: Sequelize.INTEGER,
+      pricePerPlayer: Sequelize.FLOAT,
+      status: Sequelize.STRING,
+      createdBy: {
+        type: Sequelize.INTEGER,
+        references: { model: "users", key: "id" },
+        onDelete: "CASCADE",
+      },
+      groundId: {
+        type: Sequelize.INTEGER,
+        references: { model: "grounds", key: "id" },
+        onDelete: "CASCADE",
+      },
+      createdAt: Sequelize.DATE,
+      updatedAt: Sequelize.DATE,
+    });
+
+    /* GAME SLOTS */
+    await queryInterface.createTable("gameslots", {
+      id: { type: Sequelize.INTEGER, autoIncrement: true, primaryKey: true },
+      gameId: {
+        type: Sequelize.INTEGER,
+        references: { model: "games", key: "id" },
+        onDelete: "CASCADE",
+      },
+      slotId: {
+        type: Sequelize.INTEGER,
+        references: { model: "slots", key: "id" },
+        onDelete: "CASCADE",
+      },
+      createdAt: Sequelize.DATE,
+      updatedAt: Sequelize.DATE,
+    });
+
+    /* GAME TEAMS */
+    await queryInterface.createTable("gameteams", {
+      id: { type: Sequelize.INTEGER, autoIncrement: true, primaryKey: true },
+      gameId: {
+        type: Sequelize.INTEGER,
+        references: { model: "games", key: "id" },
+        onDelete: "CASCADE",
+      },
+      teamNumber: Sequelize.INTEGER,
+      createdAt: Sequelize.DATE,
+      updatedAt: Sequelize.DATE,
+    });
+
+    /* GAME PARTICIPANTS */
+    await queryInterface.createTable("gameparticipants", {
+      id: { type: Sequelize.INTEGER, autoIncrement: true, primaryKey: true },
+      gameId: {
+        type: Sequelize.INTEGER,
+        references: { model: "games", key: "id" },
+        onDelete: "CASCADE",
+      },
+      userId: {
+        type: Sequelize.INTEGER,
+        references: { model: "users", key: "id" },
+        onDelete: "CASCADE",
+      },
+      teamId: {
+        type: Sequelize.INTEGER,
+        references: { model: "gameteams", key: "id" },
+        onDelete: "SET NULL",
+      },
+      createdAt: Sequelize.DATE,
+      updatedAt: Sequelize.DATE,
+    });
   },
 
   async down(queryInterface, Sequelize) {
+    await queryInterface.dropTable("gameparticipants");
+    await queryInterface.dropTable("gameteams");
+    await queryInterface.dropTable("gameslots");
+    await queryInterface.dropTable("games");
     await queryInterface.dropTable("reviews");
     await queryInterface.dropTable("bookings");
     await queryInterface.dropTable("amenities");
