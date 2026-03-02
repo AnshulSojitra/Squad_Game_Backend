@@ -146,7 +146,7 @@ Booking.belongsTo(Ground, {
 });
 
 // Game relations
-Game.belongsTo(User, { foreignKey: "createdBy" });
+Game.belongsTo(User, { as: "Creator", foreignKey: "createdBy" });
 User.hasMany(Game, { foreignKey: "createdBy" });
 
 Game.belongsTo(Ground, { foreignKey: "groundId" });

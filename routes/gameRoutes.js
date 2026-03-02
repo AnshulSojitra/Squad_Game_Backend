@@ -10,6 +10,11 @@ router.post(
   userAuthMiddleware,
   gameController.leaveGame,
 );
-router.get("/games/open", userAuthMiddleware, gameController.getOpenGames);
+
+router.get("/games/open", gameController.getOpenGames);
+router.get("/games/my", userAuthMiddleware, gameController.getMyGames);
+router.get("/games/joined", userAuthMiddleware, gameController.getJoinedGames);
+
+router.delete("/games/:id", userAuthMiddleware, gameController.deleteGame);
 
 module.exports = router;

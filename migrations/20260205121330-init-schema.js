@@ -610,7 +610,6 @@ module.exports = {
       },
     );
 
-    /* GAMES */
     await queryInterface.createTable("games", {
       id: { type: Sequelize.INTEGER, autoIncrement: true, primaryKey: true },
       sport: Sequelize.STRING,
@@ -635,7 +634,6 @@ module.exports = {
       updatedAt: Sequelize.DATE,
     });
 
-    /* GAME SLOTS */
     await queryInterface.createTable("gameslots", {
       id: { type: Sequelize.INTEGER, autoIncrement: true, primaryKey: true },
       gameId: {
