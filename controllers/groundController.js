@@ -620,7 +620,7 @@ exports.getPublicGroundById = async (req, res) => {
       return res.status(404).json({ message: "Ground not found" });
     }
 
-    // Fetch bookings using SNAPSHOT times (not slotId)
+    // Fetch bookings
     const bookings = await Booking.findAll({
       where: {
         groundId: ground.id,

@@ -18,6 +18,7 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const gameRoutes = require("./routes/gameRoutes");
 const autoCompleteBookings = require("./cron/autoCompleteBookings");
+const autoDeleteExpiredGames = require("./cron/autoDeleteExpiredGames");
 
 // Ensure uploads folder exists
 const uploadDir = path.join(__dirname, "uploads");
@@ -29,6 +30,7 @@ if (!fs.existsSync(uploadDir)) {
 
 const app = express();
 
+autoDeleteExpiredGames();
 autoCompleteBookings();
 // Middleware
 

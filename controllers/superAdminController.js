@@ -19,6 +19,7 @@ const { sendEmail } = require("../utils/email");
 const path = require("path");
 const fs = require("fs");
 const { Op } = require("sequelize");
+const { formatDateToDDMMYYYY } = require("../utils/time");
 
 exports.getLoggedInSuperAdmin = async (req, res) => {
   try {
@@ -135,7 +136,7 @@ exports.getUserBookings = async (req, res) => {
     const formatted = bookings.map((b) => ({
       bookingId: b.id,
       groundName: b.groundName,
-      date: b.date,
+      date: formatDateToDDMMYYYY(b.date),
       slotTime: `${to12Hour(b.slotStartTime)} - ${to12Hour(b.slotEndTime)}`,
       price: b.pricePerSlotAtBooking,
       status: b.status,
@@ -243,7 +244,7 @@ exports.createAdmin = async (req, res) => {
       subscriptionEndDate,
     });
 
-    // Send email (keeping your existing logic intact)
+    // Send email
     try {
       const createdAdmin = await Admin.findOne({ where: { email } });
 
@@ -764,7 +765,7 @@ exports.getGroundBookings = async (req, res) => {
 
     const formatted = bookings.map((b) => ({
       bookingId: b.id,
-      date: b.date,
+      date: formatDateToDDMMYYYY(b.date),
       slot: {
         startTime: to12Hour(b.slotStartTime),
         endTime: to12Hour(b.slotEndTime),

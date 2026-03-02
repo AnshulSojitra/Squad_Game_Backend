@@ -21,10 +21,6 @@ router.post("/forgot-password", adminController.forgotPassword);
 
 router.post("/reset-password", adminController.resetPassword);
 
-router.post(
-  "/renew-subscription",
-  adminAuth,
-  adminController.renewSubscription,
-);
+router.post("/renew-subscription/:adminId", adminController.renewSubscription);
 
 module.exports = router;

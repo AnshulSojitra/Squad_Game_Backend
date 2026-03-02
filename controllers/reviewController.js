@@ -16,15 +16,15 @@ exports.addReview = async (req, res) => {
     }
 
     //  Prevent multiple reviews by same user
-    const existingReview = await Review.findOne({
-      where: { groundId, userId },
-    });
+    // const existingReview = await Review.findOne({
+    //   where: { groundId, userId },
+    // });
 
-    if (existingReview) {
-      return res.status(400).json({
-        message: "You have already reviewed this ground",
-      });
-    }
+    // if (existingReview) {
+    //   return res.status(400).json({
+    //     message: "You have already reviewed this ground",
+    //   });
+    // }
 
     const review = await Review.create({
       rating,

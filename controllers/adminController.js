@@ -6,6 +6,7 @@ const adminLogin = require("../utils/templates/adminLogin");
 const { sendEmail } = require("../utils/email");
 const passwordChange = require("../utils/templates/passwordChange");
 const sequelize = require("../config/db");
+const { formatDateToDDMMYYYY, to12Hour } = require("../utils/time");
 
 exports.loginAdmin = async (req, res) => {
   try {
@@ -15,6 +16,20 @@ exports.loginAdmin = async (req, res) => {
     if (!admin) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
+
+    // subscription check
+    if (
+      admin.planType === "subscription" &&
+      admin.subscriptionEndDate &&
+      new Date(admin.subscriptionEndDate) < new Date()
+    ) {
+      await admin.update({ isBlocked: true });
+
+      return res.status(403).json({
+        message: "Subscription expired. Please renew to continue.",
+      });
+    }
+
     if (admin.isBlocked) {
       return res.status(403).json({
         message: "Your account has been blocked. Please contact support.",
@@ -98,7 +113,7 @@ exports.getAdminDashboard = async (req, res) => {
       where: { adminId, isBlocked: false },
     });
 
-    // TODAY BOOKINGS (snapshot-based)
+    // TODAY BOOKINGS
     const todayBookings = await Booking.findAll({
       where: {
         adminId,
@@ -122,7 +137,7 @@ exports.getAdminDashboard = async (req, res) => {
       0,
     );
 
-    // UPCOMING BOOKINGS (next 24 hours) — SNAPSHOT BASED
+    // UPCOMING BOOKINGS (next 24 hours)
     const now = new Date();
     const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
@@ -215,7 +230,7 @@ exports.getBookingChart = async (req, res) => {
       const key = d.toLocaleDateString("en-CA");
 
       result.push({
-        date: key,
+        date: formatDateToDDMMYYYY(key),
         bookings: bookingMap[key] || 0,
       });
     }
@@ -267,10 +282,10 @@ exports.getRevenueChart = async (req, res) => {
       const d = new Date(startDate);
       d.setDate(startDate.getDate() + i);
 
-      const key = d.toLocaleDateString("en-CA"); // YYYY-MM-DD
+      const key = d.toLocaleDateString("en-CA");
 
       result.push({
-        date: key,
+        date: formatDateToDDMMYYYY(key),
         revenue: revenueMap[key] || 0,
       });
     }
@@ -313,7 +328,7 @@ exports.getGroundBreakdown = async (req, res) => {
           required: false,
           where: {
             status: {
-              [Op.in]: ["confirmed", "completed"], // ✅ FIX
+              [Op.in]: ["confirmed", "completed"],
             },
             createdAt: {
               [Op.gte]: startDate,
@@ -501,7 +516,7 @@ exports.resetPassword = async (req, res) => {
 
 exports.renewSubscription = async (req, res) => {
   try {
-    const adminId = req.admin.id;
+    const adminId = req.params.adminId;
 
     const admin = await Admin.findByPk(adminId);
 
@@ -533,6 +548,7 @@ exports.renewSubscription = async (req, res) => {
 
     admin.subscriptionStartDate = newStartDate;
     admin.subscriptionEndDate = newEndDate;
+    admin.isBlocked = false;
 
     await admin.save();
 

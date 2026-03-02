@@ -114,14 +114,14 @@ exports.deleteGame = async (req, res) => {
       });
     }
 
-    // Optional safety check
+    // safety check
     if (game.status === "completed") {
       return res.status(400).json({
         message: "Cannot delete a completed game",
       });
     }
 
-    // Optional: Prevent delete if players joined
+    // Prevent delete if players joined
     if (game.joinedPlayersCount > 1) {
       return res.status(400).json({
         message: "Cannot delete game after players have joined",
@@ -218,7 +218,9 @@ exports.leaveGame = async (req, res) => {
 exports.getOpenGames = async (req, res) => {
   try {
     const games = await Game.findAll({
-      where: { status: ["open", "full"] },
+      where: {
+        status: ["open", "full"],
+      },
       include: [
         {
           model: Ground,

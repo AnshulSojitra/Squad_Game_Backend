@@ -23,6 +23,19 @@ const adminAuth = async (req, res, next) => {
       return res.status(401).json({ message: "Admin not found" });
     }
 
+    //  SUBSCRIPTION CHECK
+    if (
+      admin.planType === "subscription" &&
+      admin.subscriptionEndDate &&
+      new Date(admin.subscriptionEndDate) < new Date()
+    ) {
+      await admin.update({ isBlocked: true });
+
+      return res.status(403).json({
+        message: "Subscription expired. Please renew to continue.",
+      });
+    }
+
     //  Block WRITE operations for blocked admin
     if (admin.isBlocked && req.method !== "GET") {
       return res.status(403).json({
