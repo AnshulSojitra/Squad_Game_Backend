@@ -3,8 +3,7 @@ const { Op } = require("sequelize");
 const { sendEmail } = require("../utils/email");
 const cancelTemplate = require("../utils/templates/bookingCancellation");
 const { to12Hour } = require("../utils/time");
-
-/*** CREATE BOOKING*/
+const { GameSlot, Game } = require("../models");
 
 exports.cancelBooking = async (req, res) => {
   try {
@@ -24,6 +23,29 @@ exports.cancelBooking = async (req, res) => {
         status: "confirmed",
       },
     });
+
+    const { GameSlot, Game } = require("../models");
+
+    // Find if this slot belongs to any game
+    const gameSlot = await GameSlot.findOne({
+      where: { slotId: booking.slotId },
+    });
+
+    if (gameSlot) {
+      const gameId = gameSlot.gameId;
+
+      // Remove slot from game
+      await gameSlot.destroy();
+
+      // Check if game still has slots
+      const remainingSlots = await GameSlot.count({
+        where: { gameId },
+      });
+
+      if (remainingSlots === 0) {
+        await Game.destroy({ where: { id: gameId } });
+      }
+    }
 
     if (!booking) {
       return res.status(404).json({
@@ -186,8 +208,44 @@ exports.getMyBookings = async (req, res) => {
   try {
     const userId = req.user.id;
 
+    //  Calculate date 15 days ago
+    const now = new Date();
+    const past15Days = new Date();
+    past15Days.setDate(now.getDate() - 10);
+
+    const todayDate =
+      now.getFullYear() +
+      "-" +
+      String(now.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(now.getDate()).padStart(2, "0");
+
+    const past15Date =
+      past15Days.getFullYear() +
+      "-" +
+      String(past15Days.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(past15Days.getDate()).padStart(2, "0");
+
     const bookings = await Booking.findAll({
-      where: { userId },
+      where: {
+        userId,
+        [Op.or]: [
+          // Non-completed bookings
+          {
+            status: {
+              [Op.ne]: "completed",
+            },
+          },
+          // Completed bookings → only last 10 days
+          {
+            status: "completed",
+            date: {
+              [Op.between]: [past15Date, todayDate],
+            },
+          },
+        ],
+      },
       attributes: [
         "id",
         "groundId",

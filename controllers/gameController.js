@@ -168,10 +168,47 @@ exports.joinGame = async (req, res) => {
       return res.status(400).json({ message: "Already joined this game" });
     }
 
+    /* 🔥 NEW: AUTO TEAM ASSIGNMENT */
+
+    const teams = await GameTeam.findAll({
+      where: { gameId },
+    });
+
+    if (!teams.length) {
+      return res.status(400).json({
+        message: "No teams configured for this game",
+      });
+    }
+
+    let selectedTeam = null;
+    let minPlayers = Infinity;
+
+    for (const team of teams) {
+      const count = await GameParticipant.count({
+        where: { teamId: team.id },
+      });
+
+      // Only consider teams that are not full
+      if (count < game.playersPerTeam && count < minPlayers) {
+        minPlayers = count;
+        selectedTeam = team;
+      }
+    }
+
+    if (!selectedTeam) {
+      return res.status(400).json({
+        message: "All teams are full",
+      });
+    }
+
+    // Create participant WITH teamId
     await GameParticipant.create({
       gameId,
       userId: req.user.id,
+      teamId: selectedTeam.id,
     });
+
+    /* EXISTING LOGIC (UNCHANGED)   */
 
     game.joinedPlayersCount += 1;
 
@@ -181,7 +218,10 @@ exports.joinGame = async (req, res) => {
 
     await game.save();
 
-    res.json({ message: "Joined successfully" });
+    res.json({
+      message: "Joined successfully",
+      assignedTeam: selectedTeam.teamNumber,
+    });
   } catch (error) {
     console.error("JOIN GAME ERROR:", error);
     res.status(500).json({ message: "Failed to join game" });
@@ -191,6 +231,14 @@ exports.joinGame = async (req, res) => {
 exports.leaveGame = async (req, res) => {
   try {
     const { gameId } = req.params;
+    const game = await Game.findByPk(gameId);
+
+    // Prevent owner from leaving
+    if (game.createdBy === req.user.id) {
+      return res.status(400).json({
+        message: "Game creator cannot leave the game",
+      });
+    }
 
     const participant = await GameParticipant.findOne({
       where: { gameId, userId: req.user.id },
@@ -201,8 +249,6 @@ exports.leaveGame = async (req, res) => {
     }
 
     await participant.destroy();
-
-    const game = await Game.findByPk(gameId);
 
     game.joinedPlayersCount -= 1;
     game.status = "open";
@@ -255,6 +301,20 @@ exports.getOpenGames = async (req, res) => {
             {
               model: User,
               attributes: ["id", "name"],
+            },
+          ],
+        },
+        {
+          model: GameTeam,
+          include: [
+            {
+              model: GameParticipant,
+              include: [
+                {
+                  model: User,
+                  attributes: ["id", "name"],
+                },
+              ],
             },
           ],
         },
@@ -326,12 +386,37 @@ exports.getJoinedGames = async (req, res) => {
   try {
     const userId = req.user.id;
 
+    // Get gameIds where user joined
+    const myParticipations = await GameParticipant.findAll({
+      where: { userId },
+      attributes: ["gameId"],
+    });
+
+    const gameIds = myParticipations.map((p) => p.gameId);
+
+    if (!gameIds.length) {
+      return res.json({
+        message: "Joined games fetched successfully",
+        games: [],
+      });
+    }
+
+    // Fetch games with ALL participants
     const joinedGames = await Game.findAll({
+      where: {
+        id: {
+          [Op.in]: gameIds,
+        },
+      },
       include: [
         {
           model: GameParticipant,
-          where: { userId },
-          attributes: [],
+          include: [
+            {
+              model: User,
+              attributes: ["id", "name"],
+            },
+          ],
         },
         {
           model: Ground,
@@ -343,15 +428,6 @@ exports.getJoinedGames = async (req, res) => {
             {
               model: Slot,
               attributes: ["id", "startTime", "endTime"],
-            },
-          ],
-        },
-        {
-          model: GameParticipant,
-          include: [
-            {
-              model: User,
-              attributes: ["id", "name"],
             },
           ],
         },
