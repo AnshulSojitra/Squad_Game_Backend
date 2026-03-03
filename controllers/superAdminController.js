@@ -10,6 +10,11 @@ const {
   State,
   City,
   GroundImage,
+  Game,
+  GameSlot,
+  GameTeam,
+  GameParticipant,
+
   sequelize,
 } = require("../models");
 const { to12Hour } = require("../utils/time");
@@ -288,7 +293,7 @@ exports.getAllAdmins = async (req, res) => {
       attributes: {
         exclude: ["password"],
       },
-      order: [["createdAt", "DESC"]],
+      order: [["createdAt", "ASC"]],
     });
 
     res.status(200).json({

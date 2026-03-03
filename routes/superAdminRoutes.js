@@ -23,8 +23,10 @@ const {
   deleteAdmin,
   getSuperAdminDashboard,
   deleteUser,
+  getAllGames,
 } = require("../controllers/superAdminController");
 const { loginSuperAdmin } = require("../controllers/superAdminAuthController");
+const gameController = require("../controllers/gameController");
 
 router.get("/me", superAdminAuth, getLoggedInSuperAdmin);
 //LOGIN ROUTE
@@ -60,5 +62,17 @@ router.patch("/bookings/:id/complete", superAdminAuth, completeBooking);
 
 //DASHBOARD ROUTE
 router.get("/dashboard", superAdminAuth, getSuperAdminDashboard);
+
+router.get("/games", superAdminAuth, gameController.getAllGamesBySuperAdmin);
+router.delete(
+  "/games/:gameId",
+  superAdminAuth,
+  gameController.deleteGameBySuperAdmin,
+);
+router.delete(
+  "/games/:gameId/participants/:userId",
+  superAdminAuth,
+  gameController.removeParticipantBySuperAdmin,
+);
 
 module.exports = router;

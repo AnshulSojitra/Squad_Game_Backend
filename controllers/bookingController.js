@@ -2,8 +2,7 @@ const { Booking, Slot, Ground, User, City, sequelize } = require("../models");
 const { Op } = require("sequelize");
 const { sendEmail } = require("../utils/email");
 const cancelTemplate = require("../utils/templates/bookingCancellation");
-const { to12Hour } = require("../utils/time");
-const { GameSlot, Game } = require("../models");
+const { to12Hour, formatDateToDDMMYYYY } = require("../utils/time");
 
 exports.cancelBooking = async (req, res) => {
   try {
@@ -208,7 +207,7 @@ exports.getMyBookings = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    //  Calculate date 15 days ago
+    //  Calculate date 10 days ago
     const now = new Date();
     const past15Days = new Date();
     past15Days.setDate(now.getDate() - 10);
@@ -271,7 +270,7 @@ exports.getMyBookings = async (req, res) => {
 
     const formatted = bookings.map((b) => ({
       bookingId: b.id,
-      date: b.date,
+      date: formatDateToDDMMYYYY(b.date),
       status: b.status,
 
       slot: {
@@ -393,7 +392,7 @@ exports.getGroundAvailability = async (req, res) => {
     const bookings = await Booking.findAll({
       where: {
         date,
-        status: "CONFIRMED",
+        status: "confirmed",
         slotId: {
           [Op.in]: slots.map((s) => s.id),
         },

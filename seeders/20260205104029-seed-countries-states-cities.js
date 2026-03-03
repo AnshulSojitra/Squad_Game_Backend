@@ -1,9 +1,7 @@
 "use strict";
 
 /**
- * Seeder for countries, states, cities (MySQL-safe)
- * JSON structure:
- * country -> states -> cities (city is OBJECT, not string)
+ * Seeder for countries, states, cities
  */
 
 const data = require("../countries+states+cities.json");
@@ -14,7 +12,7 @@ module.exports = {
 
     // Loop through countries
     for (const country of data) {
-      // 1️⃣ Insert country
+      // Insert country
       await queryInterface.bulkInsert("countries", [
         {
           name: country.name,
@@ -25,7 +23,7 @@ module.exports = {
         },
       ]);
 
-      // 2️⃣ Fetch countryId (MySQL does NOT support RETURNING)
+      // Fetch countryId
       const [dbCountry] = await queryInterface.sequelize.query(
         `SELECT id FROM countries WHERE name = ? LIMIT 1`,
         {
@@ -36,7 +34,7 @@ module.exports = {
 
       const countryId = dbCountry.id;
 
-      // 3️⃣ Loop through states
+      // Loop through states
       for (const state of country.states) {
         await queryInterface.bulkInsert("states", [
           {
@@ -47,7 +45,7 @@ module.exports = {
           },
         ]);
 
-        // 4️⃣ Fetch stateId
+        // Fetch stateId
         const [dbState] = await queryInterface.sequelize.query(
           `SELECT id FROM states WHERE name = ? AND countryId = ? LIMIT 1`,
           {
@@ -58,10 +56,10 @@ module.exports = {
 
         const stateId = dbState.id;
 
-        // 5️⃣ Insert cities (city is OBJECT)
+        // Insert cities
         if (state.cities && state.cities.length > 0) {
           const cities = state.cities.map((city) => ({
-            name: city.name, // ✅ IMPORTANT FIX
+            name: city.name,
             stateId,
             createdAt: now,
             updatedAt: now,
@@ -74,7 +72,7 @@ module.exports = {
   },
 
   async down(queryInterface) {
-    // Delete in reverse order (FK safe)
+    // Delete in reverse order
     await queryInterface.bulkDelete("cities", null, {});
     await queryInterface.bulkDelete("states", null, {});
     await queryInterface.bulkDelete("countries", null, {});

@@ -432,7 +432,6 @@ exports.forgotPassword = async (req, res) => {
 
     const admin = await Admin.findOne({ where: { email } });
 
-    // Do NOT reveal if admin exists
     if (!admin) {
       return res.status(200).json({
         message: "If this email exists, an OTP has been sent",

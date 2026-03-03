@@ -61,7 +61,9 @@ exports.createGround = async (req, res) => {
       state: req.body.state,
       city: req.body.city,
       locationUrl: req.body.locationUrl,
-      advanceBookingDays: req.body.advanceBookingDays,
+      advanceBookingDays: req.body.advanceBookingDays
+        ? req.body.advanceBookingDays
+        : 7,
       cityId: req.body.city,
       stateId: req.body.state,
       countryId: req.body.country,
@@ -631,7 +633,6 @@ exports.getPublicGroundById = async (req, res) => {
       raw: true,
     });
 
-    // Create a lookup set: "09:00:00-10:00:00"
     const bookedTimeSet = new Set(
       bookings.map((b) => `${b.slotStartTime}-${b.slotEndTime}`),
     );
@@ -708,7 +709,7 @@ exports.getSlotAvailability = async (req, res) => {
 
     const bookedSlotIds = bookings.map((b) => b.slotId);
 
-    //  Build availability response
+    // availability response
     const availability = slots.map((slot) => ({
       slotId: slot.id,
       startTime: slot.startTime,

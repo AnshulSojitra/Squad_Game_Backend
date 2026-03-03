@@ -14,7 +14,6 @@ const {
 const razorpay = require("../utils/razorpay");
 
 const { Op } = require("sequelize");
-
 const sequelize = require("../config/db");
 
 exports.createGame = async (req, res) => {
@@ -168,7 +167,7 @@ exports.joinGame = async (req, res) => {
       return res.status(400).json({ message: "Already joined this game" });
     }
 
-    /* 🔥 NEW: AUTO TEAM ASSIGNMENT */
+    /* AUTO TEAM ASSIGNMENT */
 
     const teams = await GameTeam.findAll({
       where: { gameId },
@@ -347,6 +346,11 @@ exports.getMyGames = async (req, res) => {
         {
           model: Ground,
           attributes: ["id", "name", "area", "city"],
+          include: [
+            { model: Country, attributes: ["name"], as: "Country" },
+            { model: City, attributes: ["name"], as: "City" },
+            { model: State, attributes: ["name"], as: "State" },
+          ],
         },
         {
           model: GameSlot,
@@ -421,6 +425,11 @@ exports.getJoinedGames = async (req, res) => {
         {
           model: Ground,
           attributes: ["id", "name", "area", "city"],
+          include: [
+            { model: Country, attributes: ["name"], as: "Country" },
+            { model: City, attributes: ["name"], as: "City" },
+            { model: State, attributes: ["name"], as: "State" },
+          ],
         },
         {
           model: GameSlot,
@@ -448,6 +457,190 @@ exports.getJoinedGames = async (req, res) => {
     console.error("GET JOINED GAMES ERROR:", error);
     res.status(500).json({
       message: "Failed to fetch joined games",
+    });
+  }
+};
+
+exports.getAllGamesBySuperAdmin = async (req, res) => {
+  try {
+    const games = await Game.findAll({
+      include: [
+        // Creator Info
+        {
+          model: User,
+          as: "Creator",
+          attributes: ["id", "name", "email", "phoneNumber"],
+        },
+
+        // Ground Info
+        {
+          model: Ground,
+          attributes: [
+            "id",
+            "name",
+            "area",
+            "city",
+            "state",
+            "country",
+            "pricePerSlot",
+            "adminId",
+          ],
+        },
+
+        // Game Slots
+        {
+          model: GameSlot,
+          include: [
+            {
+              model: Slot,
+              attributes: ["id", "startTime", "endTime"],
+            },
+          ],
+        },
+
+        // Participants
+        {
+          model: GameParticipant,
+          separate: true,
+          include: [
+            {
+              model: User,
+              attributes: ["id", "name", "phoneNumber"],
+            },
+            {
+              model: GameTeam,
+              attributes: ["id", "teamNumber"],
+            },
+          ],
+        },
+
+        // Teams
+        {
+          model: GameTeam,
+          attributes: ["id", "teamNumber"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    res.json({
+      message: "All games fetched successfully",
+      totalGames: games.length,
+      games,
+    });
+  } catch (error) {
+    console.error("GET ALL GAMES (SUPER ADMIN) ERROR:", error);
+    res.status(500).json({
+      message: "Failed to fetch all games",
+    });
+  }
+};
+
+exports.deleteGameBySuperAdmin = async (req, res) => {
+  const t = await sequelize.transaction();
+
+  try {
+    const { gameId } = req.params;
+
+    const game = await Game.findByPk(gameId, { transaction: t });
+
+    if (!game) {
+      await t.rollback();
+      return res.status(404).json({ message: "Game not found" });
+    }
+
+    // Delete participants
+    await GameParticipant.destroy({
+      where: { gameId },
+      transaction: t,
+    });
+
+    // Delete teams
+    await GameTeam.destroy({
+      where: { gameId },
+      transaction: t,
+    });
+
+    // Delete game slots
+    await GameSlot.destroy({
+      where: { gameId },
+      transaction: t,
+    });
+
+    // Delete game
+    await game.destroy({ transaction: t });
+
+    await t.commit();
+
+    res.json({
+      message: "Game deleted successfully by Super Admin",
+    });
+  } catch (error) {
+    await t.rollback();
+    console.error("SUPER ADMIN DELETE GAME ERROR:", error);
+    res.status(500).json({
+      message: "Failed to delete game",
+    });
+  }
+};
+
+exports.removeParticipantBySuperAdmin = async (req, res) => {
+  const t = await sequelize.transaction();
+
+  try {
+    const { gameId, userId } = req.params;
+
+    const game = await Game.findByPk(gameId, { transaction: t });
+
+    if (!game) {
+      await t.rollback();
+      return res.status(404).json({ message: "Game not found" });
+    }
+
+    const participant = await GameParticipant.findOne({
+      where: { gameId, userId },
+      transaction: t,
+    });
+
+    if (!participant) {
+      await t.rollback();
+      return res
+        .status(404)
+        .json({ message: "Participant not found in this game" });
+    }
+
+    // Optional safety: prevent removing creator
+    if (Number(game.createdBy) === Number(userId)) {
+      await t.rollback();
+      return res.status(400).json({
+        message: "Cannot remove game creator from the game",
+      });
+    }
+
+    // Remove participant
+    await participant.destroy({ transaction: t });
+
+    // Update player count safely
+    game.joinedPlayersCount =
+      game.joinedPlayersCount > 0 ? game.joinedPlayersCount - 1 : 0;
+
+    // Update game status
+    if (game.status === "full") {
+      game.status = "open";
+    }
+
+    await game.save({ transaction: t });
+
+    await t.commit();
+
+    res.json({
+      message: "Participant removed successfully by Super Admin",
+    });
+  } catch (error) {
+    await t.rollback();
+    console.error("SUPER ADMIN REMOVE PARTICIPANT ERROR:", error);
+    res.status(500).json({
+      message: "Failed to remove participant",
     });
   }
 };
