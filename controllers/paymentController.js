@@ -319,6 +319,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
       if (type === "game") {
         const game = await Game.create(
           {
+            name: order.notes.name,
             sport: order.notes.sport,
             groundId: order.notes.groundId,
             date: bookingDate,
@@ -347,14 +348,18 @@ exports.verifyRazorpayPayment = async (req, res) => {
         }
 
         // Create Teams
+        const teams = [];
+
         for (let i = 1; i <= Number(order.notes.totalTeams); i++) {
-          await GameTeam.create(
+          const team = await GameTeam.create(
             {
               gameId: game.id,
               teamNumber: i,
             },
             { transaction: t },
           );
+
+          teams.push(team);
         }
 
         // Add Creator as Participant
@@ -362,9 +367,11 @@ exports.verifyRazorpayPayment = async (req, res) => {
           {
             gameId: game.id,
             userId: req.user.id,
+            teamId: teams[0].id,
           },
           { transaction: t },
         );
+
         // After game created successfully
         try {
           const user = await User.findByPk(req.user.id);

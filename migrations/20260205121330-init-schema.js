@@ -1,5 +1,7 @@
 "use strict";
 
+const { sequelize } = require("../models");
+
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -612,14 +614,15 @@ module.exports = {
 
     await queryInterface.createTable("games", {
       id: { type: Sequelize.INTEGER, autoIncrement: true, primaryKey: true },
-      sport: Sequelize.STRING,
-      date: Sequelize.DATEONLY,
-      totalTeams: Sequelize.INTEGER,
-      playersPerTeam: Sequelize.INTEGER,
-      totalPlayers: Sequelize.INTEGER,
-      joinedPlayersCount: Sequelize.INTEGER,
-      pricePerPlayer: Sequelize.FLOAT,
-      status: Sequelize.STRING,
+      name: { type: Sequelize.STRING, allowNull: false },
+      sport: { type: Sequelize.STRING, allowNull: false },
+      date: { type: Sequelize.DATEONLY, allowNull: false },
+      totalTeams: { type: Sequelize.INTEGER, allowNull: false },
+      playersPerTeam: { type: Sequelize.INTEGER, allowNull: false },
+      totalPlayers: { type: Sequelize.INTEGER, allowNull: false },
+      joinedPlayersCount: { type: Sequelize.INTEGER, allowNull: false },
+      pricePerPlayer: { type: Sequelize.FLOAT, allowNull: false },
+      status: { type: Sequelize.STRING, allowNull: false },
       createdBy: {
         type: Sequelize.INTEGER,
         references: { model: "users", key: "id" },

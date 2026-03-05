@@ -1,10 +1,11 @@
 const jwt = require("jsonwebtoken");
-const { User } = require("../models");
+const { User, Game, Ground } = require("../models");
 const userRegistration = require("../utils/templates/userRegistration");
 const { sendEmail } = require("../utils/email");
 const userLogin = require("../utils/templates/userLogin");
 const { identifyLoginField } = require("../utils/identifyLoginField");
 const { sendSms } = require("../utils/sendSms");
+const { Op } = require("sequelize");
 
 exports.registerUser = async (req, res) => {
   try {
@@ -354,6 +355,39 @@ exports.changeName = async (req, res) => {
     console.error("CHANGE NAME ERROR:", error);
     res.status(500).json({
       message: "Failed to update name",
+    });
+  }
+};
+
+exports.getLandingStats = async (req, res) => {
+  try {
+    // Count open games
+    const openGames = await Game.count({
+      where: {
+        status: "open",
+      },
+    });
+
+    // Count active grounds
+    const activeGrounds = await Ground.count({
+      where: {
+        isBlocked: false,
+      },
+    });
+
+    // Round down to nearest 10
+    const roundDown = (num) => {
+      if (num < 10) return num;
+      return Math.floor(num / 10) * 10;
+    };
+    res.json({
+      openGames: roundDown(openGames),
+      activeGrounds: roundDown(activeGrounds),
+    });
+  } catch (error) {
+    console.error("LANDING STATS ERROR:", error);
+    res.status(500).json({
+      message: "Failed to fetch landing stats",
     });
   }
 };

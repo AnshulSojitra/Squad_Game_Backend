@@ -24,6 +24,7 @@ const gameDeletedEmail = require("../utils/templates/gameDeleted");
 exports.createGame = async (req, res) => {
   try {
     const {
+      name,
       groundId,
       slotIds,
       date,
@@ -76,6 +77,7 @@ exports.createGame = async (req, res) => {
       currency: "INR",
       receipt: `game_${Date.now()}`,
       notes: {
+        name,
         type: "game",
         userId: req.user.id,
         groundId,

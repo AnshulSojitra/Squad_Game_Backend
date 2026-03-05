@@ -178,6 +178,26 @@ exports.deleteUser = async (req, res) => {
         throw new Error("User not found");
       }
 
+      // Find games where user participated
+      const participants = await GameParticipant.findAll({
+        where: { userId: user.id },
+        transaction: t,
+      });
+
+      for (const p of participants) {
+        const game = await Game.findByPk(p.gameId, { transaction: t });
+
+        if (game) {
+          game.joinedPlayersCount = Math.max(0, game.joinedPlayersCount - 1);
+
+          if (game.joinedPlayersCount < game.totalPlayers) {
+            game.status = "open";
+          }
+
+          await game.save({ transaction: t });
+        }
+      }
+
       await user.destroy({ transaction: t });
     });
 

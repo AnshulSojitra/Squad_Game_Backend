@@ -19,6 +19,7 @@ const reviewRoutes = require("./routes/reviewRoutes");
 const gameRoutes = require("./routes/gameRoutes");
 const autoCompleteBookings = require("./cron/autoCompleteBookings");
 const autoDeleteExpiredGames = require("./cron/autoDeleteExpiredGames");
+const publicRoutes = require("./routes/publicRoutes");
 
 // Ensure uploads folder exists
 const uploadDir = path.join(__dirname, "uploads");
@@ -53,6 +54,7 @@ app.get("/", (req, res) => {
 });
 
 // API routes
+
 app.use("/api/super-admin", superAdminRoutes);
 
 app.use("/api/admin", adminRoutes);
@@ -70,6 +72,7 @@ app.use("/api/admin/bookings", adminBookingRoutes);
 app.use("/api", reviewRoutes);
 
 app.use("/api/payments", paymentRoutes);
+app.use("/api", publicRoutes);
 
 app.use("/api", gameRoutes);
 

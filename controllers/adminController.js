@@ -6,7 +6,7 @@ const adminLogin = require("../utils/templates/adminLogin");
 const { sendEmail } = require("../utils/email");
 const passwordChange = require("../utils/templates/passwordChange");
 const sequelize = require("../config/db");
-const { formatDateToDDMMYYYY } = require("../utils/time");
+const { to12Hour, formatDateToDDMMYYYY } = require("../utils/time");
 
 exports.loginAdmin = async (req, res) => {
   try {
@@ -168,9 +168,9 @@ exports.getAdminDashboard = async (req, res) => {
 
     const formattedUpcoming = upcomingBookings.map((b) => ({
       bookingId: b.id,
-      date: b.date,
-      startTime: b.slotStartTime,
-      endTime: b.slotEndTime,
+      date: formatDateToDDMMYYYY(b.date),
+      startTime: to12Hour(b.slotStartTime),
+      endTime: to12Hour(b.slotEndTime),
       groundName: b.groundName,
       userName: b.User?.name || "User",
     }));

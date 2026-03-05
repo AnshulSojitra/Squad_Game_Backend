@@ -4,6 +4,10 @@ const sequelize = require("../config/db");
 const Game = sequelize.define(
   "Game",
   {
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     sport: {
       type: DataTypes.STRING,
       allowNull: false,
