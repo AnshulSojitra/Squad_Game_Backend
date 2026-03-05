@@ -107,12 +107,12 @@ exports.cancelMultipleBookings = async (req, res) => {
 
   try {
     const result = await Booking.update(
-      { status: "CANCELLED" },
+      { status: "cancelled" },
       {
         where: {
           id: { [Op.in]: bookingIds },
           userId: req.user.id,
-          status: "CONFIRMED",
+          status: "confirmed",
         },
       },
     );
@@ -236,7 +236,7 @@ exports.getMyBookings = async (req, res) => {
               [Op.ne]: "completed",
             },
           },
-          // Completed bookings → only last 10 days
+          // Completed bookings -> only last 10 days
           {
             status: "completed",
             date: {

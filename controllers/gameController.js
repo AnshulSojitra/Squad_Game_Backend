@@ -12,9 +12,14 @@ const {
   City,
 } = require("../models");
 const razorpay = require("../utils/razorpay");
-
 const { Op } = require("sequelize");
 const sequelize = require("../config/db");
+const { sendEmail } = require("../utils/email");
+const gameJoinedEmail = require("../utils/templates/gameJoined");
+const playerJoinedGameEmail = require("../utils/templates/playerJoinedGame");
+const gameLeftByPlayer = require("../utils/templates/gameLeftByPlayer");
+const playerLeftGame = require("../utils/templates/playerLeftGame");
+const gameDeletedEmail = require("../utils/templates/gameDeleted");
 
 exports.createGame = async (req, res) => {
   try {
@@ -97,6 +102,8 @@ exports.createGame = async (req, res) => {
 };
 
 exports.deleteGame = async (req, res) => {
+  const t = await sequelize.transaction();
+
   try {
     const gameId = req.params.id;
 
@@ -105,9 +112,11 @@ exports.deleteGame = async (req, res) => {
         id: gameId,
         createdBy: req.user.id,
       },
+      transaction: t,
     });
 
     if (!game) {
+      await t.rollback();
       return res.status(404).json({
         message: "Game not found or you are not authorized",
       });
@@ -115,6 +124,7 @@ exports.deleteGame = async (req, res) => {
 
     // safety check
     if (game.status === "completed") {
+      await t.rollback();
       return res.status(400).json({
         message: "Cannot delete a completed game",
       });
@@ -122,17 +132,65 @@ exports.deleteGame = async (req, res) => {
 
     // Prevent delete if players joined
     if (game.joinedPlayersCount > 1) {
+      await t.rollback();
       return res.status(400).json({
         message: "Cannot delete game after players have joined",
       });
     }
 
-    await game.destroy();
+    // Get game slots
+    const gameSlots = await GameSlot.findAll({
+      where: { gameId },
+      transaction: t,
+    });
+
+    const slotIds = gameSlots.map((gs) => gs.slotId);
+
+    if (slotIds.length > 0) {
+      // Cancel related confirmed bookings
+      await Booking.update(
+        { status: "cancelled" },
+        {
+          where: {
+            slotId: slotIds,
+            date: game.date,
+            status: "confirmed",
+          },
+          transaction: t,
+        },
+      );
+    }
+
+    // Send email to creator
+    try {
+      const creator = await User.findByPk(req.user.id);
+
+      const ground = await Ground.findByPk(game.groundId);
+
+      await sendEmail({
+        to: creator.email,
+        subject: "Your Game Has Been Deleted",
+        html: gameDeletedEmail({
+          userName: creator.name,
+          sport: game.sport,
+          groundName: ground?.name || "Ground",
+          date: game.date,
+        }),
+      });
+    } catch (emailError) {
+      console.error("GAME DELETE EMAIL FAILED:", emailError.message);
+    }
+
+    // Delete game
+    await game.destroy({ transaction: t });
+
+    await t.commit();
 
     res.json({
-      message: "Game deleted successfully",
+      message: "Game deleted and related bookings cancelled successfully",
     });
   } catch (error) {
+    await t.rollback();
     console.error("DELETE GAME ERROR:", error);
     res.status(500).json({
       message: "Failed to delete game",
@@ -217,6 +275,57 @@ exports.joinGame = async (req, res) => {
 
     await game.save();
 
+    try {
+      const creator = await User.findByPk(game.createdBy);
+      const player = await User.findByPk(req.user.id);
+
+      const gameSlots = await GameSlot.findAll({
+        where: { gameId },
+        include: [
+          {
+            model: Slot,
+            attributes: ["startTime", "endTime"],
+          },
+        ],
+      });
+
+      const slotTimes = gameSlots.map(
+        (s) => `${s.Slot.startTime} - ${s.Slot.endTime}`,
+      );
+
+      const ground = await Ground.findByPk(game.groundId);
+
+      // Email to player
+      await sendEmail({
+        to: player.email,
+        subject: "You Joined a Game 🎮",
+        html: gameJoinedEmail({
+          playerName: player.name,
+          creatorName: creator.name,
+          sport: game.sport,
+          groundName: ground.name,
+          date: game.date,
+          slots: slotTimes,
+        }),
+      });
+
+      // Email to creator
+      await sendEmail({
+        to: creator.email,
+        subject: "New Player Joined Your Game 👤",
+        html: playerJoinedGameEmail({
+          creatorName: creator.name,
+          playerName: player.name,
+          sport: game.sport,
+          groundName: ground.name,
+          date: game.date,
+          slots: slotTimes,
+        }),
+      });
+    } catch (emailError) {
+      console.error("JOIN GAME EMAIL FAILED:", emailError.message);
+    }
+
     res.json({
       message: "Joined successfully",
       assignedTeam: selectedTeam.teamNumber,
@@ -253,6 +362,57 @@ exports.leaveGame = async (req, res) => {
     game.status = "open";
 
     await game.save();
+
+    try {
+      const creator = await User.findByPk(game.createdBy);
+      const player = await User.findByPk(req.user.id);
+
+      const ground = await Ground.findByPk(game.groundId);
+
+      const gameSlots = await GameSlot.findAll({
+        where: { gameId },
+        include: [
+          {
+            model: Slot,
+            attributes: ["startTime", "endTime"],
+          },
+        ],
+      });
+
+      const slotTimes = gameSlots.map(
+        (s) => `${s.Slot.startTime} - ${s.Slot.endTime}`,
+      );
+
+      // Email to player
+      await sendEmail({
+        to: player.email,
+        subject: "You Left a Game ❌",
+        html: gameLeftByPlayer({
+          playerName: player.name,
+          creatorName: creator.name,
+          sport: game.sport,
+          groundName: ground.name,
+          date: game.date,
+          slots: slotTimes,
+        }),
+      });
+
+      // Email to creator
+      await sendEmail({
+        to: creator.email,
+        subject: "Player Left Your Game ⚠️",
+        html: playerLeftGame({
+          creatorName: creator.name,
+          playerName: player.name,
+          sport: game.sport,
+          groundName: ground.name,
+          date: game.date,
+          slots: slotTimes,
+        }),
+      });
+    } catch (emailError) {
+      console.error("LEAVE GAME EMAIL FAILED:", emailError.message);
+    }
 
     res.json({ message: "Left game successfully" });
   } catch (error) {
@@ -485,6 +645,11 @@ exports.getAllGamesBySuperAdmin = async (req, res) => {
             "pricePerSlot",
             "adminId",
           ],
+          include: [
+            { model: Country, attributes: ["name"], as: "Country" },
+            { model: City, attributes: ["name"], as: "City" },
+            { model: State, attributes: ["name"], as: "State" },
+          ],
         },
 
         // Game Slots
@@ -549,6 +714,29 @@ exports.deleteGameBySuperAdmin = async (req, res) => {
       return res.status(404).json({ message: "Game not found" });
     }
 
+    // Get related slots
+    const gameSlots = await GameSlot.findAll({
+      where: { gameId },
+      transaction: t,
+    });
+
+    const slotIds = gameSlots.map((gs) => gs.slotId);
+
+    // Cancel confirmed bookings related to this game
+    if (slotIds.length > 0) {
+      await Booking.update(
+        { status: "cancelled" },
+        {
+          where: {
+            slotId: slotIds,
+            date: game.date,
+            status: "confirmed",
+          },
+          transaction: t,
+        },
+      );
+    }
+
     // Delete participants
     await GameParticipant.destroy({
       where: { gameId },
@@ -573,7 +761,8 @@ exports.deleteGameBySuperAdmin = async (req, res) => {
     await t.commit();
 
     res.json({
-      message: "Game deleted successfully by Super Admin",
+      message:
+        "Game deleted successfully by Super Admin and related bookings cancelled",
     });
   } catch (error) {
     await t.rollback();

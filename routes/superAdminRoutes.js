@@ -2,66 +2,80 @@ const express = require("express");
 const router = express.Router();
 const superAdminAuth = require("../middleware/superAdminAuth");
 
-const {
-  getAllUsers,
-  getAllAdmins,
-  getUserById,
-  getAdminById,
-  toggleUserBlock,
-  toggleAdminBlock,
-  getAllBookings,
-  cancelBooking,
-  completeBooking,
-  getAllGrounds,
-  toggleGroundBlock,
-  getLoggedInSuperAdmin,
-  getUserBookings,
-  getAdminGrounds,
-  getGroundBookings,
-  createAdmin,
-  deleteGround,
-  deleteAdmin,
-  getSuperAdminDashboard,
-  deleteUser,
-  getAllGames,
-} = require("../controllers/superAdminController");
+const superAdminController = require("../controllers/superAdminController");
 const { loginSuperAdmin } = require("../controllers/superAdminAuthController");
 const gameController = require("../controllers/gameController");
 
-router.get("/me", superAdminAuth, getLoggedInSuperAdmin);
+router.get("/me", superAdminAuth, superAdminController.getLoggedInSuperAdmin);
 //LOGIN ROUTE
 router.post("/login", loginSuperAdmin);
 
 //USER ROUTES
-router.get("/users", superAdminAuth, getAllUsers);
-router.get("/user/:id", superAdminAuth, getUserById);
-router.patch("/user/block/:id", superAdminAuth, toggleUserBlock);
-router.get("/users/:userId/bookings", superAdminAuth, getUserBookings);
-router.delete("/user/:id", superAdminAuth, deleteUser);
+router.get("/users", superAdminAuth, superAdminController.getAllUsers);
+router.get("/user/:id", superAdminAuth, superAdminController.getUserById);
+router.patch(
+  "/user/block/:id",
+  superAdminAuth,
+  superAdminController.toggleUserBlock,
+);
+router.get(
+  "/users/:userId/bookings",
+  superAdminAuth,
+  superAdminController.getUserBookings,
+);
+router.delete("/user/:id", superAdminAuth, superAdminController.deleteUser);
 
 module.exports = router;
 
 //ADMIN ROUTES
-router.get("/admins", superAdminAuth, getAllAdmins);
-router.get("/admin/:id", superAdminAuth, getAdminById);
-router.patch("/admin/block/:id", superAdminAuth, toggleAdminBlock);
-router.get("/admins/:adminId/grounds", superAdminAuth, getAdminGrounds);
-router.post("/admins", superAdminAuth, createAdmin);
-router.delete("/admin/:id", superAdminAuth, deleteAdmin);
+router.get("/admins", superAdminAuth, superAdminController.getAllAdmins);
+router.get("/admin/:id", superAdminAuth, superAdminController.getAdminById);
+router.patch(
+  "/admin/block/:id",
+  superAdminAuth,
+  superAdminController.toggleAdminBlock,
+);
+router.get(
+  "/admins/:adminId/grounds",
+  superAdminAuth,
+  superAdminController.getAdminGrounds,
+);
+router.post("/admins", superAdminAuth, superAdminController.createAdmin);
+router.delete("/admin/:id", superAdminAuth, superAdminController.deleteAdmin);
 
 //GROUND ROUTES
-router.get("/grounds", superAdminAuth, getAllGrounds);
-router.patch("/ground/block/:id", superAdminAuth, toggleGroundBlock);
-router.get("/grounds/:groundId/bookings", superAdminAuth, getGroundBookings);
-router.delete("/ground/:id", superAdminAuth, deleteGround);
+router.get("/grounds", superAdminAuth, superAdminController.getAllGrounds);
+router.patch(
+  "/ground/block/:id",
+  superAdminAuth,
+  superAdminController.toggleGroundBlock,
+);
+router.get(
+  "/grounds/:groundId/bookings",
+  superAdminAuth,
+  superAdminController.getGroundBookings,
+);
+router.delete("/ground/:id", superAdminAuth, superAdminController.deleteGround);
 
 //BOOKING ROUTE
-router.get("/bookings", superAdminAuth, getAllBookings);
-router.patch("/bookings/:id/cancel", superAdminAuth, cancelBooking);
-router.patch("/bookings/:id/complete", superAdminAuth, completeBooking);
+router.get("/bookings", superAdminAuth, superAdminController.getAllBookings);
+router.patch(
+  "/bookings/:id/cancel",
+  superAdminAuth,
+  superAdminController.cancelBooking,
+);
+router.patch(
+  "/bookings/:id/complete",
+  superAdminAuth,
+  superAdminController.completeBooking,
+);
 
 //DASHBOARD ROUTE
-router.get("/dashboard", superAdminAuth, getSuperAdminDashboard);
+router.get(
+  "/dashboard",
+  superAdminAuth,
+  superAdminController.getSuperAdminDashboard,
+);
 
 router.get("/games", superAdminAuth, gameController.getAllGamesBySuperAdmin);
 router.delete(

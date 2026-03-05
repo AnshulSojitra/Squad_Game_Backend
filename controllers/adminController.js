@@ -6,7 +6,7 @@ const adminLogin = require("../utils/templates/adminLogin");
 const { sendEmail } = require("../utils/email");
 const passwordChange = require("../utils/templates/passwordChange");
 const sequelize = require("../config/db");
-const { formatDateToDDMMYYYY, to12Hour } = require("../utils/time");
+const { formatDateToDDMMYYYY } = require("../utils/time");
 
 exports.loginAdmin = async (req, res) => {
   try {

@@ -365,6 +365,28 @@ exports.verifyRazorpayPayment = async (req, res) => {
           },
           { transaction: t },
         );
+        // After game created successfully
+        try {
+          const user = await User.findByPk(req.user.id);
+
+          const slotTimes = slots.map((s) => `${s.startTime} - ${s.endTime}`);
+
+          await sendEmail({
+            to: user.email,
+            subject: "Game Created Successfully 🎮",
+            html: gameCreatedEmail({
+              userName: user.name,
+              sport,
+              groundName: slots[0].Ground.name,
+              date,
+              slots: slotTimes,
+              playersPerTeam,
+              totalTeams,
+            }),
+          });
+        } catch (emailError) {
+          console.error("GAME CREATED EMAIL FAILED:", emailError.message);
+        }
       }
 
       /* EMAIL */
