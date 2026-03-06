@@ -1,4 +1,3 @@
-// models/SuperAdmin.js
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 const SuperAdmin = sequelize.define(
@@ -28,7 +27,5 @@ const SuperAdmin = sequelize.define(
     timestamps: true,
   },
 );
-
-// sequelize.sync({ alter: true });
 
 module.exports = SuperAdmin;

@@ -55,6 +55,4 @@ const Admin = sequelize.define(
   },
 );
 
-// sequelize.sync({ alter: true });
-
 module.exports = Admin;

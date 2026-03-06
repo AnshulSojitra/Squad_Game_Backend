@@ -1,4 +1,3 @@
-// models/Booking.js
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 
@@ -90,7 +89,5 @@ const Booking = sequelize.define(
     timestamps: true,
   },
 );
-
-// sequelize.sync({ alter: true });
 
 module.exports = Booking;

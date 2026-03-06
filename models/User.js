@@ -10,11 +10,6 @@ const User = sequelize.define(
       primaryKey: true,
     },
 
-    uuid: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      unique: true,
-    },
     name: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -54,7 +49,5 @@ const User = sequelize.define(
     timestamps: true,
   },
 );
-
-// sequelize.sync({ alter: true });
 
 module.exports = User;

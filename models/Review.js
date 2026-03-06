@@ -38,6 +38,4 @@ const Review = sequelize.define(
   },
 );
 
-// sequelize.sync({ alter: true });
-
 module.exports = Review;
