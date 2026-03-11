@@ -90,7 +90,7 @@ module.exports = ({
 
               <!-- CTA Button -->
               <div style="text-align:center; margin-top:30px;">
-                <a href="#" 
+                <a href="https://micrographic-briskly-yasuko.ngrok-free.dev/user/mybooking" 
                   style="background:#2563eb; color:#ffffff; text-decoration:none; padding:12px 25px; border-radius:6px; font-size:14px;">
                   View My Bookings
                 </a>

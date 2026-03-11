@@ -23,6 +23,13 @@ const path = require("path");
 const fs = require("fs");
 const { Op } = require("sequelize");
 const { formatDateToDDMMYYYY } = require("../utils/time");
+const cloudinary = require("../config/cloudinary");
+
+const getPublicId = (url) => {
+  const parts = url.split("/upload/")[1];
+  const publicId = parts.split(".")[0].replace(/v\d+\//, "");
+  return publicId;
+};
 
 exports.getLoggedInSuperAdmin = async (req, res) => {
   try {
@@ -840,14 +847,20 @@ exports.deleteGround = async (req, res) => {
     }
 
     // DELETE IMAGE FILES FROM UPLOADS
-    if (ground.images && ground.images.length > 0) {
-      ground.images.forEach((img) => {
-        const filePath = path.join(__dirname, "..", img.imageUrl);
+    // if (ground.images && ground.images.length > 0) {
+    //   ground.images.forEach((img) => {
+    //     const filePath = path.join(__dirname, "..", img.imageUrl);
 
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      });
+    //     if (fs.existsSync(filePath)) {
+    //       fs.unlinkSync(filePath);
+    //     }
+    //   });
+    // }
+    if (ground.images && ground.images.length > 0) {
+      for (const img of ground.images) {
+        const publicId = getPublicId(img.imageUrl);
+        await cloudinary.uploader.destroy(publicId);
+      }
     }
 
     //DELETE DB RECORD
