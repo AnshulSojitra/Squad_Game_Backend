@@ -30,10 +30,10 @@ const sequelize = new Sequelize(
     dialect: "mysql",
 
     dialectOptions: {
-      ssl: {
-        ca: fs.readFileSync("D:/Workspace/MernStack/ca.pem"),
-        rejectUnauthorized: true,
-      },
+      // ssl: {
+      //   ca: fs.readFileSync("D:/Workspace/MernStack/ca.pem"),
+      //   rejectUnauthorized: true,
+      // },
     },
   },
 );

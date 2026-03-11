@@ -22,10 +22,10 @@ module.exports = {
     port: process.env.DB_PORT,
     dialect: "mysql",
     dialectOptions: {
-      ssl: {
-        ca: fs.readFileSync("D:/Workspace/MernStack/ca.pem"),
-        rejectUnauthorized: true,
-      },
+      // ssl: {
+      //   ca: fs.readFileSync("D:/Workspace/MernStack/ca.pem"),
+      //   rejectUnauthorized: true,
+      // },
     },
   },
 };
