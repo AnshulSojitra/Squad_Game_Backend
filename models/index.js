@@ -21,10 +21,7 @@ const GameSlot = require("./GameSlot");
 
 /* RELATIONS  */
 
-/**
- * Admin (Ground Owner) → Grounds
- * One admin can create many grounds
- */
+/* Admin → Grounds */
 Admin.hasMany(Ground, {
   foreignKey: {
     name: "adminId",
@@ -36,10 +33,7 @@ Ground.belongsTo(Admin, {
   foreignKey: "adminId",
 });
 
-/**
- * Ground → Slots
- * Admin explicitly creates slots for a ground
- */
+/* Ground → Slots */
 Ground.hasMany(Slot, {
   foreignKey: {
     name: "groundId",
@@ -52,9 +46,7 @@ Slot.belongsTo(Ground, {
   foreignKey: "groundId",
 });
 
-/**
- * Ground → Images
- */
+/* Ground → Images */
 Ground.hasMany(GroundImage, {
   foreignKey: "groundId",
   as: "images",
@@ -65,9 +57,7 @@ GroundImage.belongsTo(Ground, {
   foreignKey: "groundId",
 });
 
-/**
- * User → Bookings
- */
+/* User → Bookings */
 User.hasMany(Booking, {
   foreignKey: {
     name: "userId",
@@ -87,9 +77,7 @@ Review.belongsTo(User, { foreignKey: "userId" });
 Ground.hasMany(Review, { foreignKey: "groundId", onDelete: "CASCADE" });
 Review.belongsTo(Ground, { foreignKey: "groundId" });
 
-/**
- * Slot → Bookings
- */
+/* Slot → Bookings */
 Slot.hasMany(Booking, {
   foreignKey: {
     name: "slotId",

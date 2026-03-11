@@ -9,7 +9,6 @@ const path = require("path");
 const superAdminRoutes = require("./routes/superAdminRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const adminGroundRoutes = require("./routes/adminGroundRoutes");
-const sequelize = require("./config/db");
 const locationRoutes = require("./routes/locationRoutes");
 const publicGroundRoutes = require("./routes/publicGroundRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");

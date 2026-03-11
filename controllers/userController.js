@@ -5,7 +5,6 @@ const { sendEmail } = require("../utils/email");
 const userLogin = require("../utils/templates/userLogin");
 const { identifyLoginField } = require("../utils/identifyLoginField");
 const { sendSms } = require("../utils/sendSms");
-const { Op } = require("sequelize");
 
 exports.registerUser = async (req, res) => {
   try {

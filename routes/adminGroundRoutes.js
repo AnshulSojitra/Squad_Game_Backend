@@ -1,42 +1,42 @@
 const express = require("express");
 const router = express.Router();
-
-// Middleware
 const adminAuth = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
+const groundController = require("../controllers/groundController");
+const superAdminController = require("../controllers/superAdminController");
 
-// Controller
-const {
-  createGround,
-  getAdminGrounds,
-  getAdminGroundById,
-  updateGround,
-  deleteGround,
-} = require("../controllers/groundController");
-const { toggleGroundBlock } = require("../controllers/superAdminController");
+//Create new ground
 
-//Create new ground (Admin only)
-
-router.post("/", adminAuth, upload.array("images", 5), createGround);
+router.post(
+  "/",
+  adminAuth,
+  upload.array("images", 5),
+  groundController.createGround,
+);
 
 // Get all grounds of logged-in admin
 
-router.get("/", adminAuth, getAdminGrounds);
+router.get("/", adminAuth, groundController.getAdminGrounds);
 
-//Get single ground by id (Admin only)
+//Get single ground by id
 
-router.get("/:id", adminAuth, getAdminGroundById);
+router.get("/:id", adminAuth, groundController.getAdminGroundById);
 
-//Update ground (Admin only)
+//Update ground
 
-router.put("/:id", adminAuth, upload.array("images", 5), updateGround);
+router.put(
+  "/:id",
+  adminAuth,
+  upload.array("images", 5),
+  groundController.updateGround,
+);
 
-//Delete ground (Admin only)
+//Delete ground
 
-router.delete("/:id", adminAuth, deleteGround);
+router.delete("/:id", adminAuth, groundController.deleteGround);
 
 // Block/unblock ground
 
-router.patch("/block/:id", adminAuth, toggleGroundBlock);
+router.patch("/block/:id", adminAuth, superAdminController.toggleGroundBlock);
 
 module.exports = router;

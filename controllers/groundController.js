@@ -1,4 +1,3 @@
-const he = require("he");
 const { Booking } = require("../models");
 const { Op } = require("sequelize");
 const {
@@ -15,7 +14,13 @@ const {
 const fs = require("fs");
 const path = require("path");
 const { to12Hour } = require("../utils/time");
+const cloudinary = require("../config/cloudinary");
 
+const getPublicId = (url) => {
+  const parts = url.split("/upload/")[1];
+  const publicId = parts.split(".")[0].replace(/v\d+\//, "");
+  return publicId;
+};
 /* ADMIN CONTROLLERS */
 
 //* CREATE GROUND
@@ -77,7 +82,8 @@ exports.createGround = async (req, res) => {
     // Save images
     const images = req.files.map((file) => ({
       groundId: ground.id,
-      imageUrl: `/uploads/${file.filename}`,
+      // imageUrl: `/uploads/${file.filename}`,
+      imageUrl: file.path,
     }));
     await GroundImage.bulkCreate(images);
 
@@ -270,22 +276,47 @@ exports.updateGround = async (req, res) => {
       gstPercentage: req.body.gstPercentage,
     });
 
+    // // Replace images if new ones uploaded
+    // if (req.files && req.files.length > 0) {
+    //   for (const img of ground.images) {
+    //     const filePath = path.join(__dirname, "..", img.imageUrl);
+    //     if (fs.existsSync(filePath)) {
+    //       fs.unlinkSync(filePath);
+    //     }
+    //   }
+
+    //   await GroundImage.destroy({
+    //     where: { groundId: ground.id },
+    //   });
+
+    //   const newImages = req.files.map((file) => ({
+    //     groundId: ground.id,
+    //     // imageUrl: `/uploads/${file.filename}`,
+    //     imageUrl: file.path,
+    //   }));
+
+    //   await GroundImage.bulkCreate(newImages);
+    // }
+
     // Replace images if new ones uploaded
     if (req.files && req.files.length > 0) {
+      // Delete old images from Cloudinary
       for (const img of ground.images) {
-        const filePath = path.join(__dirname, "..", img.imageUrl);
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
+        const parts = img.imageUrl.split("/upload/")[1];
+        const publicId = parts.split(".")[0].replace(/v\d+\//, "");
+
+        await cloudinary.uploader.destroy(publicId);
       }
 
+      // Remove old records from DB
       await GroundImage.destroy({
         where: { groundId: ground.id },
       });
 
+      // Save new images
       const newImages = req.files.map((file) => ({
         groundId: ground.id,
-        imageUrl: `/uploads/${file.filename}`,
+        imageUrl: file.path,
       }));
 
       await GroundImage.bulkCreate(newImages);
@@ -356,7 +387,7 @@ exports.updateGround = async (req, res) => {
         if (existingBookings > 0) {
           return res.status(400).json({
             message:
-              "Cannot modify slots because bookings already exist for this ground",
+              "Cannot modify slots because bookings already exist for this ground. You can block this ground to prevent new bookings.",
           });
         }
 
@@ -406,14 +437,20 @@ exports.deleteGround = async (req, res) => {
     }
 
     // DELETE IMAGE FILES FROM UPLOADS
-    if (ground.images && ground.images.length > 0) {
-      ground.images.forEach((img) => {
-        const filePath = path.join(__dirname, "..", img.imageUrl);
+    // if (ground.images && ground.images.length > 0) {
+    //   ground.images.forEach((img) => {
+    //     const filePath = path.join(__dirname, "..", img.imageUrl);
 
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      });
+    //     if (fs.existsSync(filePath)) {
+    //       fs.unlinkSync(filePath);
+    //     }
+    //   });
+    // }
+    if (ground.images && ground.images.length > 0) {
+      for (const img of ground.images) {
+        const publicId = getPublicId(img.imageUrl);
+        await cloudinary.uploader.destroy(publicId);
+      }
     }
 
     //DELETE DB RECORD

@@ -260,14 +260,12 @@ exports.joinGame = async (req, res) => {
       });
     }
 
-    // Create participant WITH teamId
+    // Create participant
     await GameParticipant.create({
       gameId,
       userId: req.user.id,
       teamId: selectedTeam.id,
     });
-
-    /* EXISTING LOGIC (UNCHANGED)   */
 
     game.joinedPlayersCount += 1;
 
@@ -800,7 +798,7 @@ exports.removeParticipantBySuperAdmin = async (req, res) => {
         .json({ message: "Participant not found in this game" });
     }
 
-    // Optional safety: prevent removing creator
+    // prevent removing creator
     if (Number(game.createdBy) === Number(userId)) {
       await t.rollback();
       return res.status(400).json({

@@ -11,8 +11,6 @@ const {
   City,
   GroundImage,
   Game,
-  GameSlot,
-  GameTeam,
   GameParticipant,
 
   sequelize,
