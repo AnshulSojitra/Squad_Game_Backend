@@ -381,7 +381,7 @@ exports.updateGround = async (req, res) => {
 
       if (slotsChanged) {
         const existingBookings = await Booking.count({
-          where: { groundId: ground.id },
+          where: { groundId: ground.id, status: "confirmed" },
         });
 
         if (existingBookings > 0) {
@@ -698,8 +698,8 @@ exports.getPublicGroundById = async (req, res) => {
       country: ground.Country?.name || null,
       locationUrl: ground.locationUrl,
       advanceBookingDays: ground.advanceBookingDays,
-      openingTime: ground.openingTime,
-      closingTime: ground.closingTime,
+      openingTime: to12Hour(ground.openingTime),
+      closingTime: to12Hour(ground.closingTime),
       gstPercentage: ground.gstPercentage,
       images: ground.images || [],
       amenities: ground.amenities || [],

@@ -43,6 +43,12 @@ const adminAuth = async (req, res, next) => {
       });
     }
 
+    if (admin.isBlocked) {
+      return res.status(403).json({
+        message: "Your account has been blocked by admin",
+      });
+    }
+
     req.admin = {
       id: admin.id,
       name: admin.name,
