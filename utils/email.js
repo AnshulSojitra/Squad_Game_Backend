@@ -2,7 +2,7 @@ const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
+  port: Number(process.env.EMAIL_PORT),
   secure: false,
   auth: {
     user: process.env.EMAIL_USER,
@@ -11,18 +11,22 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendEmail = async ({ to, subject, html, attachments }) => {
-  console.log("📧 Sending email to:", to);
+  try {
+    console.log("📧 Sending email to:", to);
 
-  const info = await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
-    to,
-    subject,
-    html,
-    attachments,
-  });
+    const info = await transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to,
+      subject,
+      html,
+      attachments,
+    });
 
-  console.log("✅ Email sent successfully");
-  console.log("📨 Message ID:", info.messageId);
+    console.log("✅ Email sent successfully");
+    console.log("📨 Message ID:", info.messageId);
+  } catch (error) {
+    console.error("❌ Error sending email:", error);
+  }
 };
 
 module.exports = { sendEmail };
