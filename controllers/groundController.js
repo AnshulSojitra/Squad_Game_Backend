@@ -14,16 +14,110 @@ const {
 const fs = require("fs");
 const path = require("path");
 const { to12Hour } = require("../utils/time");
-const cloudinary = require("../config/cloudinary");
+// const cloudinary = require("../config/cloudinary");
 
-const getPublicId = (url) => {
-  const parts = url.split("/upload/")[1];
-  const publicId = parts.split(".")[0].replace(/v\d+\//, "");
-  return publicId;
-};
+// const getPublicId = (url) => {
+//   const parts = url.split("/upload/")[1];
+//   const publicId = parts.split(".")[0].replace(/v\d+\//, "");
+//   return publicId;
+// };
+
+const baseUrl = process.env.BASE_URL;
 /* ADMIN CONTROLLERS */
 
 //* CREATE GROUND
+
+// exports.createGround = async (req, res) => {
+//   try {
+//     const adminId = req.admin.id;
+
+//     // Count existing grounds of this admin
+//     const groundCount = await Ground.count({
+//       where: { adminId },
+//     });
+
+//     // Enforce limit
+//     if (groundCount >= 10) {
+//       return res.status(403).json({
+//         message: "You can add a maximum of 10 grounds only",
+//       });
+//     }
+
+//     if (!req.files || req.files.length === 0) {
+//       return res.status(400).json({ message: "Images are required" });
+//     }
+
+//     // Parse slots
+//     const slots =
+//       typeof req.body.slots === "string"
+//         ? JSON.parse(req.body.slots)
+//         : req.body.slots;
+
+//     const amenities =
+//       typeof req.body.amenities === "string"
+//         ? JSON.parse(req.body.amenities)
+//         : req.body.amenities;
+
+//     // Create ground
+//     const ground = await Ground.create({
+//       name: req.body.groundName,
+//       contactNo: req.body.contact,
+//       pricePerSlot: req.body.pricePerHour,
+//       area: req.body.area,
+//       country: req.body.country,
+//       state: req.body.state,
+//       city: req.body.city,
+//       locationUrl: req.body.locationUrl,
+//       advanceBookingDays: req.body.advanceBookingDays
+//         ? req.body.advanceBookingDays
+//         : 7,
+//       cityId: req.body.city,
+//       stateId: req.body.state,
+//       countryId: req.body.country,
+//       game: req.body.game,
+//       openingTime: req.body.openingTime,
+//       closingTime: req.body.closingTime,
+//       gstPercentage: req.body.gstPercentage,
+//       adminId: req.admin.id,
+//     });
+
+//     // Save images
+//     const images = req.files.map((file) => ({
+//       groundId: ground.id,
+//       imageUrl: `${baseUrl}/uploads/${file.filename}`,
+//       // imageUrl: file.path,
+//     }));
+//     await GroundImage.bulkCreate(images);
+
+//     // Save amenities
+
+//     if (Array.isArray(amenities) && amenities.length > 0) {
+//       const amenityRows = amenities.map((a) => ({
+//         groundId: ground.id,
+//         name: a,
+//       }));
+//       await Amenity.bulkCreate(amenityRows);
+//     }
+
+//     // Save slots
+//     if (Array.isArray(slots) && slots.length > 0) {
+//       const slotRows = slots.map((s) => ({
+//         groundId: ground.id,
+//         startTime: s.start,
+//         endTime: s.end,
+//       }));
+//       await Slot.bulkCreate(slotRows);
+//     }
+
+//     res.status(201).json({
+//       message: "Ground added successfully",
+//       groundId: ground.id,
+//     });
+//   } catch (error) {
+//     console.error("CREATE GROUND ERROR:", error);
+//     res.status(500).json({ message: "Failed to add ground" });
+//   }
+// };
 
 exports.createGround = async (req, res) => {
   try {
@@ -82,8 +176,8 @@ exports.createGround = async (req, res) => {
     // Save images
     const images = req.files.map((file) => ({
       groundId: ground.id,
-      // imageUrl: `/uploads/${file.filename}`,
-      imageUrl: file.path,
+      // imageUrl: `${baseUrl}uploads/${file.filename}`,
+      imageUrl: `/uploads/${file.filename}`,
     }));
     await GroundImage.bulkCreate(images);
 
@@ -172,7 +266,10 @@ exports.getAdminGrounds = async (req, res) => {
       openingTime: to12Hour(g.openingTime),
       closingTime: to12Hour(g.closingTime),
       isBlocked: g.isBlocked,
-      images: g.images,
+      images:
+        g.images.map((img) => ({
+          imageUrl: `${baseUrl}${img.imageUrl}`,
+        })) || [],
       Slots: g.Slots,
       amenities: g.amenities,
       gstPercentage: g.gstPercentage,
@@ -233,6 +330,10 @@ exports.getAdminGroundById = async (req, res) => {
       name: amenity.name,
     }));
 
+    groundData.images = groundData.images.map((img) => ({
+      imageUrl: `${baseUrl}${img.imageUrl}`,
+    }));
+
     res.json(groundData);
   } catch (error) {
     console.error("GET ADMIN GROUND ERROR:", error.message);
@@ -241,6 +342,184 @@ exports.getAdminGroundById = async (req, res) => {
 };
 
 //* UPDATE GROUND
+
+// exports.updateGround = async (req, res) => {
+//   try {
+//     const ground = await Ground.findOne({
+//       where: {
+//         id: req.params.id,
+//         adminId: req.admin.id,
+//       },
+//       include: { model: GroundImage, as: "images" },
+//     });
+
+//     if (!ground) {
+//       return res.status(404).json({ message: "Ground not found" });
+//     }
+
+//     // Update ground fields
+//     await ground.update({
+//       name: req.body.groundName,
+//       contactNo: req.body.contact,
+//       pricePerSlot: req.body.pricePerHour,
+//       area: req.body.area,
+//       locationUrl: req.body.locationUrl,
+//       country: req.body.country,
+//       state: req.body.state,
+//       city: req.body.city,
+//       cityId: req.body.city,
+//       stateId: req.body.state,
+//       countryId: req.body.country,
+//       game: req.body.game,
+//       openingTime: req.body.openingTime,
+//       closingTime: req.body.closingTime,
+//       advanceBookingDays: req.body.advanceBookingDays,
+//       gstPercentage: req.body.gstPercentage,
+//     });
+
+//     // Replace images if new ones uploaded
+//     if (req.files && req.files.length > 0) {
+//       for (const img of ground.images) {
+//         const filePath = path.join(__dirname, "..", img.imageUrl);
+//         if (fs.existsSync(filePath)) {
+//           fs.unlinkSync(filePath);
+//         }
+//       }
+
+//       await GroundImage.destroy({
+//         where: { groundId: ground.id },
+//       });
+
+//       const newImages = req.files.map((file) => ({
+//         groundId: ground.id,
+//         imageUrl: `${baseUrl}/uploads/${file.filename}`,
+//         // imageUrl: file.path,
+//       }));
+
+//       await GroundImage.bulkCreate(newImages);
+//     }
+
+//     // Replace images if new ones uploaded
+//     if (req.files && req.files.length > 0) {
+//       // Delete old images from Cloudinary
+//       for (const img of ground.images) {
+//         const filePath = path.join(__dirname, "..", img.imageUrl);
+//         if (fs.existsSync(filePath)) {
+//           fs.unlinkSync(filePath);
+//         }
+//         // const parts = img.imageUrl.split("/upload/")[1];
+//         // const publicId = parts.split(".")[0].replace(/v\d+\//, "");
+
+//         // await cloudinary.uploader.destroy(publicId);
+//       }
+
+//       // Remove old records from DB
+//       await GroundImage.destroy({
+//         where: { groundId: ground.id },
+//       });
+
+//       // Save new images
+//       const newImages = req.files.map((file) => ({
+//         groundId: ground.id,
+//         // imageUrl: file.path,
+//         imageUrl: `${baseUrl}/uploads/${file.filename}`,
+//       }));
+
+//       await GroundImage.bulkCreate(newImages);
+//     }
+
+//     // Update amenities
+//     let amenities = [];
+
+//     if (req.body.amenities) {
+//       try {
+//         amenities = JSON.parse(req.body.amenities);
+//       } catch (err) {
+//         return res.status(400).json({
+//           message: "Invalid amenities format",
+//         });
+//       }
+//     }
+
+//     if (amenities.length > 0) {
+//       await Amenity.destroy({
+//         where: { groundId: ground.id },
+//       });
+
+//       const amenitiesData = amenities.map((amenity) => ({
+//         groundId: ground.id,
+//         name: amenity,
+//       }));
+
+//       await Amenity.bulkCreate(amenitiesData);
+//     }
+
+//     // Update slots
+
+//     let slots = [];
+
+//     if (req.body.slots) {
+//       try {
+//         slots = JSON.parse(req.body.slots);
+//       } catch (err) {
+//         return res.status(400).json({
+//           message: "Invalid slots format",
+//         });
+//       }
+//     }
+
+//     if (slots.length > 0) {
+//       // Get existing slots
+//       const existingSlots = await Slot.findAll({
+//         where: { groundId: ground.id },
+//         attributes: ["startTime", "endTime"],
+//         raw: true,
+//       });
+
+//       const formattedExisting = existingSlots.map((s) => ({
+//         start: s.startTime,
+//         end: s.endTime,
+//       }));
+
+//       const slotsChanged =
+//         JSON.stringify(formattedExisting.sort()) !==
+//         JSON.stringify(slots.sort((a, b) => a.start.localeCompare(b.start)));
+
+//       if (slotsChanged) {
+//         const existingBookings = await Booking.count({
+//           where: { groundId: ground.id, status: "confirmed" },
+//         });
+
+//         if (existingBookings > 0) {
+//           return res.status(400).json({
+//             message:
+//               "Cannot modify slots because bookings already exist for this ground. You can block this ground to prevent new bookings.",
+//           });
+//         }
+
+//         await Slot.destroy({
+//           where: { groundId: ground.id },
+//         });
+
+//         const slotsData = slots.map((slot) => ({
+//           groundId: ground.id,
+//           startTime: slot.start || slot.startTime,
+//           endTime: slot.end || slot.endTime,
+//         }));
+
+//         await Slot.bulkCreate(slotsData);
+//       }
+//     }
+
+//     res.json({
+//       message: "Ground updated successfully",
+//       ground,
+//     });
+//   } catch (error) {
+//     console.error("UPDATE GROUND ERROR:", error);
+//     res.status(500).json({ message: "Failed to update" });
+//   }
+// };
 
 exports.updateGround = async (req, res) => {
   try {
@@ -276,47 +555,23 @@ exports.updateGround = async (req, res) => {
       gstPercentage: req.body.gstPercentage,
     });
 
-    // // Replace images if new ones uploaded
-    // if (req.files && req.files.length > 0) {
-    //   for (const img of ground.images) {
-    //     const filePath = path.join(__dirname, "..", img.imageUrl);
-    //     if (fs.existsSync(filePath)) {
-    //       fs.unlinkSync(filePath);
-    //     }
-    //   }
-
-    //   await GroundImage.destroy({
-    //     where: { groundId: ground.id },
-    //   });
-
-    //   const newImages = req.files.map((file) => ({
-    //     groundId: ground.id,
-    //     // imageUrl: `/uploads/${file.filename}`,
-    //     imageUrl: file.path,
-    //   }));
-
-    //   await GroundImage.bulkCreate(newImages);
-    // }
-
     // Replace images if new ones uploaded
     if (req.files && req.files.length > 0) {
-      // Delete old images from Cloudinary
       for (const img of ground.images) {
-        const parts = img.imageUrl.split("/upload/")[1];
-        const publicId = parts.split(".")[0].replace(/v\d+\//, "");
-
-        await cloudinary.uploader.destroy(publicId);
+        const filePath = path.join(__dirname, "..", img.imageUrl);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
       }
 
-      // Remove old records from DB
       await GroundImage.destroy({
         where: { groundId: ground.id },
       });
 
-      // Save new images
       const newImages = req.files.map((file) => ({
         groundId: ground.id,
-        imageUrl: file.path,
+        // imageUrl: `${baseUrl}uploads/${file.filename}`,
+        imageUrl: `/uploads/${file.filename}`,
       }));
 
       await GroundImage.bulkCreate(newImages);
@@ -381,13 +636,13 @@ exports.updateGround = async (req, res) => {
 
       if (slotsChanged) {
         const existingBookings = await Booking.count({
-          where: { groundId: ground.id, status: "confirmed" },
+          where: { groundId: ground.id },
         });
 
         if (existingBookings > 0) {
           return res.status(400).json({
             message:
-              "Cannot modify slots because bookings already exist for this ground. You can block this ground to prevent new bookings.",
+              "Cannot modify slots because bookings already exist for this ground",
           });
         }
 
@@ -417,6 +672,59 @@ exports.updateGround = async (req, res) => {
 
 //* DELETE GROUND
 
+// exports.deleteGround = async (req, res) => {
+//   try {
+//     const ground = await Ground.findOne({
+//       where: {
+//         id: req.params.id,
+//         adminId: req.admin.id,
+//       },
+//       include: {
+//         model: GroundImage,
+//         as: "images",
+//       },
+//     });
+
+//     if (!ground) {
+//       return res
+//         .status(404)
+//         .json({ message: "Ground not found or access denied" });
+//     }
+
+//     // DELETE IMAGE FILES FROM UPLOADS
+//     if (ground.images && ground.images.length > 0) {
+//       ground.images.forEach((img) => {
+//         const filePath = path.join(__dirname, "..", img.imageUrl);
+
+//         if (fs.existsSync(filePath)) {
+//           fs.unlinkSync(filePath);
+//         }
+//       });
+//     }
+//     if (ground.images && ground.images.length > 0) {
+//       ground.images.forEach((img) => {
+//         const filePath = path.join(__dirname, "..", img.imageUrl);
+
+//         if (fs.existsSync(filePath)) {
+//           fs.unlinkSync(filePath);
+//         }
+//       });
+//       // for (const img of ground.images) {
+//       //   const publicId = getPublicId(img.imageUrl);
+//       //   await cloudinary.uploader.destroy(publicId);
+//       // }
+//     }
+
+//     //DELETE DB RECORD
+//     await ground.destroy();
+
+//     res.json({ message: "Ground and images deleted successfully" });
+//   } catch (error) {
+//     console.error("DELETE GROUND ERROR:", error);
+//     res.status(500).json({ message: "Failed to delete ground" });
+//   }
+// };
+
 exports.deleteGround = async (req, res) => {
   try {
     const ground = await Ground.findOne({
@@ -437,20 +745,14 @@ exports.deleteGround = async (req, res) => {
     }
 
     // DELETE IMAGE FILES FROM UPLOADS
-    // if (ground.images && ground.images.length > 0) {
-    //   ground.images.forEach((img) => {
-    //     const filePath = path.join(__dirname, "..", img.imageUrl);
-
-    //     if (fs.existsSync(filePath)) {
-    //       fs.unlinkSync(filePath);
-    //     }
-    //   });
-    // }
     if (ground.images && ground.images.length > 0) {
-      for (const img of ground.images) {
-        const publicId = getPublicId(img.imageUrl);
-        await cloudinary.uploader.destroy(publicId);
-      }
+      ground.images.forEach((img) => {
+        const filePath = path.join(__dirname, "..", img.imageUrl);
+
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      });
     }
 
     //DELETE DB RECORD
@@ -592,7 +894,10 @@ exports.getPublicGrounds = async (req, res) => {
       closingTime: to12Hour(g.closingTime),
       isBlocked: g.isBlocked,
       amenities: g.amenities || [],
-      images: g.images || [],
+      images:
+        g.images.map((img) => ({
+          imageUrl: `${baseUrl}${img.imageUrl}`,
+        })) || [],
       Slots: g.Slots || [],
     }));
 
@@ -701,7 +1006,10 @@ exports.getPublicGroundById = async (req, res) => {
       openingTime: to12Hour(ground.openingTime),
       closingTime: to12Hour(ground.closingTime),
       gstPercentage: ground.gstPercentage,
-      images: ground.images || [],
+      images:
+        ground.images.map((img) => ({
+          imageUrl: `${baseUrl}${img.imageUrl}`,
+        })) || [],
       amenities: ground.amenities || [],
       slots: slotsWithAvailability,
     });

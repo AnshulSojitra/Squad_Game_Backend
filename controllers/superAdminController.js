@@ -23,13 +23,15 @@ const path = require("path");
 const fs = require("fs");
 const { Op } = require("sequelize");
 const { formatDateToDDMMYYYY } = require("../utils/time");
-const cloudinary = require("../config/cloudinary");
+// const cloudinary = require("../config/cloudinary");
 
-const getPublicId = (url) => {
-  const parts = url.split("/upload/")[1];
-  const publicId = parts.split(".")[0].replace(/v\d+\//, "");
-  return publicId;
-};
+// const getPublicId = (url) => {
+//   const parts = url.split("/upload/")[1];
+//   const publicId = parts.split(".")[0].replace(/v\d+\//, "");
+//   return publicId;
+// };
+
+const baseUrl = process.env.BASE_URL;
 
 exports.getLoggedInSuperAdmin = async (req, res) => {
   try {
@@ -454,7 +456,9 @@ exports.getAdminGrounds = async (req, res) => {
       closingTime: to12Hour(g.closingTime),
       createdAt: g.createdAt,
       isBlocked: g.isBlocked,
-      images: g.images,
+      images: g.images.map((img) => ({
+        imageUrl: `${baseUrl}${img.imageUrl}`,
+      })),
       Slots: g.Slots,
       amenities: g.amenities,
     }));
@@ -711,7 +715,9 @@ exports.getAllGrounds = async (req, res) => {
       closingTime: to12Hour(g.closingTime),
       createdAt: g.createdAt,
       isBlocked: g.isBlocked,
-      images: g.images,
+      images: g.images.map((img) => ({
+        imageUrl: `${baseUrl}${img.imageUrl}`,
+      })),
       Slots: g.Slots,
       amenities: g.amenities,
       admin: {
@@ -828,6 +834,62 @@ exports.getGroundBookings = async (req, res) => {
   }
 };
 
+// exports.deleteGround = async (req, res) => {
+//   try {
+//     const ground = await Ground.findOne({
+//       where: {
+//         id: req.params.id,
+//       },
+//       include: {
+//         model: GroundImage,
+//         as: "images",
+//       },
+//     });
+
+//     if (!ground) {
+//       return res
+//         .status(404)
+//         .json({ message: "Ground not found or access denied" });
+//     }
+
+//     // DELETE IMAGE FILES FROM UPLOADS
+
+//     if (ground.images && ground.images.length > 0) {
+//       ground.images.forEach((img) => {
+//         const filePath = path.join(__dirname, "..", img.imageUrl);
+
+//         if (fs.existsSync(filePath)) {
+//           fs.unlinkSync(filePath);
+//         }
+//       });
+//     }
+
+//     if (ground.images && ground.images.length > 0) {
+//       // for (const img of ground.images) {
+//       //   const publicId = getPublicId(img.imageUrl);
+//       //   await cloudinary.uploader.destroy(publicId);
+//       // }
+//       ground.images.forEach((img) => {
+//         const filePath = path.join(__dirname, "..", img.imageUrl);
+
+//         if (fs.existsSync(filePath)) {
+//           fs.unlinkSync(filePath);
+//         }
+//       });
+//     }
+
+//     //DELETE DB RECORD
+//     await ground.destroy();
+
+//     res.json({ message: "Ground and images deleted successfully" });
+//   } catch (error) {
+//     console.error("DELETE GROUND ERROR:", error);
+//     res.status(500).json({ message: "Failed to delete ground" });
+//   }
+// };
+
+// DASHBOARD METHODS
+
 exports.deleteGround = async (req, res) => {
   try {
     const ground = await Ground.findOne({
@@ -847,20 +909,14 @@ exports.deleteGround = async (req, res) => {
     }
 
     // DELETE IMAGE FILES FROM UPLOADS
-    // if (ground.images && ground.images.length > 0) {
-    //   ground.images.forEach((img) => {
-    //     const filePath = path.join(__dirname, "..", img.imageUrl);
-
-    //     if (fs.existsSync(filePath)) {
-    //       fs.unlinkSync(filePath);
-    //     }
-    //   });
-    // }
     if (ground.images && ground.images.length > 0) {
-      for (const img of ground.images) {
-        const publicId = getPublicId(img.imageUrl);
-        await cloudinary.uploader.destroy(publicId);
-      }
+      ground.images.forEach((img) => {
+        const filePath = path.join(__dirname, "..", img.imageUrl);
+
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      });
     }
 
     //DELETE DB RECORD
@@ -872,8 +928,6 @@ exports.deleteGround = async (req, res) => {
     res.status(500).json({ message: "Failed to delete ground" });
   }
 };
-
-// DASHBOARD METHODS
 
 exports.getSuperAdminDashboard = async (req, res) => {
   try {

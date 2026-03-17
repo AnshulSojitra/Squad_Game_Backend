@@ -429,6 +429,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
           date: bookingDate,
           slots: slotDetails,
           pricePerSlot: slots[0].Ground.pricePerSlot,
+          gstPercentage: slots[0].Ground.gstPercentage,
         });
 
         await sendEmail({
